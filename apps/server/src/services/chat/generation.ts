@@ -146,10 +146,16 @@ export class GenerationRunner {
         { role: 'user', content: transcript },
       ],
     });
-    current = { throughMessageId: through.id, summary: res.text.trim() || '(empty summary)' };
-    const after = measure(current);
-    await this.d.db.insert(compactions).values({ conversationId: job.conversationId, throughMessageId: through.id, summary: current.summary, tokensBefore: before, tokensAfter: after });
+    // Cap the summary so compaction always frees room, even if the model is verbose.
+    const maxChars = Math.floor(budget * 0.3) * 4;
+    let summary = res.text.trim() || '(empty summary)';
+    if (summary.length > maxChars) summary = `${summary.slice(0, maxChars)}…`;
+    const candidate = { throughMessageId: through.id, summary };
+    const after = measure(candidate);
     await this.recordUsage(job, job.model, runtime.keyId, res.usage, 'compaction', 0, null, 'ok');
+    if (after >= before) return current;
+    current = candidate;
+    await this.d.db.insert(compactions).values({ conversationId: job.conversationId, throughMessageId: through.id, summary: current.summary, tokensBefore: before, tokensAfter: after });
     await publish({ type: 'compacted', tokensBefore: before, tokensAfter: after });
     return current;
   }
