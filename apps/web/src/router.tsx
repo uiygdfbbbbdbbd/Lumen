@@ -128,6 +128,19 @@ const FilesPageLazy = lazyRouteComponent(() => import('./features/files/FilesRou
 const filesRoute = createRoute({ getParentRoute: () => shell, path: '/files', component: FilesPageLazy });
 const projectsRoute = createRoute({ getParentRoute: () => shell, path: '/projects', component: lazyRouteComponent(() => import('./features/projects/ProjectsPage.js'), 'ProjectsPage') });
 const projectRoute = createRoute({ getParentRoute: () => shell, path: '/projects/$projectId', component: lazyRouteComponent(() => import('./features/projects/ProjectPage.js'), 'ProjectPage') });
+const artifactsRoute = createRoute({
+  getParentRoute: () => shell,
+  path: '/artifacts',
+  validateSearch: (s: Record<string, unknown>): { open?: string } => (typeof s.open === 'string' && /^[0-9a-f-]{36}$/.test(s.open) ? { open: s.open } : {}),
+  component: lazyRouteComponent(() => import('./features/artifacts/ArtifactsPage.js'), 'ArtifactsPage'),
+});
+// Published artifacts are public: no sign-in, no app shell.
+const publicArtifactRoute = createRoute({
+  getParentRoute: () => root,
+  path: '/a/$slug',
+  validateSearch: (s: Record<string, unknown>): { embed?: '1' } => (s.embed === '1' || s.embed === 1 ? { embed: '1' as const } : {}),
+  component: lazyRouteComponent(() => import('./features/artifacts/PublicArtifactPage.js'), 'PublicArtifactPage'),
+});
 const settingsRoute = createRoute({ getParentRoute: () => shell, path: '/settings', component: SettingsLayout });
 const settingsIndex = createRoute({ getParentRoute: () => settingsRoute, path: '/', beforeLoad: () => { throw redirect({ to: '/settings/account' }); } });
 const accountRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/account', component: ProfileSettings });
@@ -153,10 +166,11 @@ const adminModels = createRoute({ getParentRoute: () => adminRoute, path: '/mode
 const adminRag = createRoute({ getParentRoute: () => adminRoute, path: '/rag', component: RagSettingsPage });
 
 const routeTree = root.addChildren([
+  publicArtifactRoute,
   guest.addChildren([loginRoute, signupRoute, forgotRoute, resetRoute, verifyRoute, magicRoute, emailChangeRoute]),
   authed.addChildren([
     onboardingRoute,
-    shell.addChildren([homeRoute, chatRoute, temporaryRoute, filesRoute, projectsRoute, projectRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels, adminRag])]),
+    shell.addChildren([homeRoute, chatRoute, temporaryRoute, filesRoute, projectsRoute, projectRoute, artifactsRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels, adminRag])]),
   ]),
 ]);
 

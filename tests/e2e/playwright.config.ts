@@ -59,7 +59,7 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: `pnpm --filter @lumen/web exec vite --port ${WEB_PORT} --strictPort`,
+      command: `pnpm --filter @lumen/web build:runtime && pnpm --filter @lumen/web exec vite --port ${WEB_PORT} --strictPort`,
       url: `http://localhost:${WEB_PORT}`,
       env: { API_PROXY: `http://localhost:${API_PORT}` },
       reuseExistingServer: false,

@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import DOMPurify from 'dompurify';
 
 /** Renders Mermaid in strict security mode, then sanitizes the SVG before inserting it. */
-export default function Mermaid({ code }: { code: string }) {
+export default function Mermaid({ code, onError }: { code: string; onError?: (message: string) => void }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -16,12 +16,17 @@ export default function Mermaid({ code }: { code: string }) {
         const { svg: out } = await mermaid.render(`m${id}`, code);
         if (!cancelled) setSvg(DOMPurify.sanitize(out, { USE_PROFILES: { svg: true, svgFilters: true }, ADD_TAGS: ['foreignObject'] }));
       } catch (e) {
-        if (!cancelled) setError((e as Error).message);
+        if (!cancelled) {
+          setError((e as Error).message);
+          onError?.((e as Error).message);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
+    // onError is a notification callback; re-rendering the diagram when it changes would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, id]);
   if (error) return <pre className="my-3 overflow-x-auto rounded-md bg-code-bg p-3 text-sm text-code" title={error}>{code}</pre>;
   if (!svg) return <div className="my-3 h-24 animate-pulse rounded-md bg-surface" aria-label="Rendering diagram" />;

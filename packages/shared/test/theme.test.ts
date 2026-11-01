@@ -119,3 +119,11 @@ describe('css variables', () => {
     expect(themeToCssVars(t, { backgroundAssetUrl: '/x") ; } body { ' })['--lm-app-bg']).toBe(t.colors.background);
   });
 });
+
+describe('chart palette tokens', () => {
+  it('emits the mode-specific categorical palette in fixed order', async () => {
+    const { CHART_PALETTES, getBuiltinTheme: get, themeToCssVars: vars } = await import('../src/index.js');
+    expect(vars(get('light')!)['--lm-chart-1']).toBe(CHART_PALETTES.light[0]);
+    expect(vars(get('dark')!)['--lm-chart-8']).toBe(CHART_PALETTES.dark[7]);
+  });
+});

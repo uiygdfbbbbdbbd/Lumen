@@ -1,5 +1,6 @@
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 import * as pptxModule from 'pptxgenjs';
+import { parseSlides } from '@lumen/shared';
 
 /** The subset of pptxgenjs we use (its CJS default export doesn't type-check cleanly under NodeNext). */
 interface PptxSlide {
@@ -57,28 +58,6 @@ export async function markdownToDocx(title: string, md: string): Promise<Buffer>
   }
   const doc = new Document({ title, creator: 'Lumen', sections: [{ children: paras }] });
   return Packer.toBuffer(doc);
-}
-
-export interface Slide {
-  title: string;
-  bullets: string[];
-  notes: string;
-}
-
-/** Slides markdown: slides separated by a line with `---`; first heading is the title; "Note:" starts speaker notes. */
-export function parseSlides(md: string): Slide[] {
-  return md
-    .replace(/\r\n/g, '\n')
-    .split(/\n-{3,}\n/)
-    .map((block) => {
-      const [body, ...noteParts] = block.split(/\n(?:Notes?|Speaker notes):\s*/i);
-      const lines = (body ?? '').split('\n').filter((l) => l.trim());
-      const titleIdx = lines.findIndex((l) => /^#{1,3}\s/.test(l));
-      const title = titleIdx >= 0 ? lines[titleIdx]!.replace(/^#+\s*/, '') : (lines[0] ?? '');
-      const bullets = lines.filter((_, i) => i !== (titleIdx >= 0 ? titleIdx : 0)).map((l) => l.replace(/^\s*[-*+]\s+/, '').replace(/[*_`]/g, ''));
-      return { title: title.replace(/[*_`]/g, ''), bullets, notes: noteParts.join('\n').trim() };
-    })
-    .filter((s) => s.title || s.bullets.length);
 }
 
 export async function slidesToPptx(title: string, md: string): Promise<Buffer> {

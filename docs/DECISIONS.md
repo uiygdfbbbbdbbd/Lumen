@@ -151,3 +151,43 @@ Users can force either mode per conversation via `PATCH /api/conversations/:id/f
 ## D32. Embedding models are resolved as system models
 The admin picks an embedding model in settings. It is used even if it is hidden from the chat model picker
 (`enabled = false`), so embedding-only models never show up as chat choices.
+
+## D33. Artifacts run in a sandboxed, network-less runtime frame
+HTML and React artifacts run in `/artifact-runtime.html` inside an `<iframe sandbox>` **without**
+`allow-same-origin`, so the frame has an opaque origin: no access to app cookies, storage or DOM. Its CSP
+(server header and a `<meta>` copy) sets `connect-src 'none'`, so artifact code can't call any network API.
+AI and key-value storage go through a postMessage bridge that the parent answers with the viewer's own
+session and quotas (`/api/artifacts/:id/ai`, `/storage/:key`), checking `event.source` both ways. The
+runtime refuses to run unless it is actually sandboxed (`window.origin === 'null'` and framed), which is why
+any site may frame it (`frame-ancestors *`) for embedded public artifacts. `VITE_ARTIFACT_RUNTIME_URL` can
+point the frame at a separate origin for extra isolation. React artifacts are compiled in the frame with
+sucrase; imports are limited to an allowlist (react, react-dom, recharts, lucide-react).
+
+## D34. Charts are data, drawn by the app
+Chart artifacts are JSON (`chartSpecSchema` in shared), never code, and are rendered by an in-app SVG renderer
+that follows our dataviz rules: categorical colors come from theme tokens `--lm-chart-1..8` in a fixed order
+(separate validated palettes for light and dark), one y-axis only, 2px lines, ≤24px bars with 4px rounded data
+ends and 2px surface gaps, a legend for 2+ series, direct end labels only when they don't collide, a
+crosshair/per-mark tooltip that also works from the keyboard, and a table view. A "pie" request renders as a
+part-to-whole bar (segmented for ≤6 parts, ranked bars beyond) because bars compare parts more accurately;
+scatter keeps the first three series (the only slots separable in every pair) and lists the rest in the table.
+
+## D35. Every artifact change is a version
+Model edits (`update_artifact` exact replace, `rewrite_artifact`), user edits, spreadsheet cell edits, restores
+and undo all append a version (`basedOn` records branching). Restoring or undoing never deletes history. The
+code editor is uncontrolled and remounts per version, and warns if the artifact changes while edits are unsaved.
+
+## D36. Self-hosted Monaco, loaded on demand
+The source editor is Monaco bundled with its workers (no CDN), in a lazily loaded chunk, so it works offline and
+under a strict CSP without affecting the initial bundle (initial JS stays ≈250 KB gz).
+
+## D37. Client-side exports where possible
+Source downloads, PNG/SVG (theme variables resolved before rasterizing), CSV (chart data, computed spreadsheet
+values) and "PDF (print)" run in the browser. DOCX and PPTX are generated server-side (`docx`, `pptxgenjs`).
+LaTeX artifacts are previewed by converting to Markdown + KaTeX; true TeX→PDF compilation needs the Code Mode
+sandbox (step 9).
+
+## D38. Gallery thumbnails are live renders
+Instead of server screenshots (which need a headless browser), gallery cards render the artifact itself at small
+scale once scrolled into view: SVG as an image, charts with the in-app renderer, HTML/React in the same sandbox
+without the bridge, text types as an excerpt.

@@ -34,11 +34,12 @@ export function plan(turn: NormalizedTurn): Plan {
   if (slow) p.delayMs = Math.min(5000, Number(slow[1]));
   if (t.includes('[disconnect]')) p.disconnectAfter = 3;
   if (t.includes('[reason]')) p.reasoning = 'Let me think about this step by step. The user wants a reply.';
-  const tool = /\[tool:([a-zA-Z0-9_-]+)\s*(\{.*?\})?\]/.exec(t);
+  const tool = /\[tool:([a-zA-Z0-9_-]+)\s*/.exec(t);
   if (tool && !turn.toolResult) {
+    const json = t[tool.index + tool[0].length] === '{' ? balancedObject(t, tool.index + tool[0].length) : null;
     let args: Record<string, unknown> = {};
     try {
-      args = tool[2] ? (JSON.parse(tool[2]) as Record<string, unknown>) : {};
+      args = json ? (JSON.parse(json) as Record<string, unknown>) : {};
     } catch {
       args = {};
     }
@@ -55,4 +56,20 @@ export function plan(turn: NormalizedTurn): Plan {
   }
   p.words = text.split(/(?<= )/);
   return p;
+}
+
+/** The JSON object starting at `start`, matching braces outside of strings (so args may contain `}]`). */
+export function balancedObject(text: string, start: number): string | null {
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '\\') i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}' && --depth === 0) return text.slice(start, i + 1);
+  }
+  return null;
 }

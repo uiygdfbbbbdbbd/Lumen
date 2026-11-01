@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { BUILTIN_STYLES } from '@lumen/shared';
 import { Badge, Banner, Button, Dialog, DialogContent, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, Field, IconButton, Select, Skeleton, Textarea, Tooltip, toast } from '@lumen/ui';
-import { Archive, Copy, EyeOff, MoreHorizontal, NotebookPen, Star, Trash2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Archive, Copy, EyeOff, Layers, MoreHorizontal, NotebookPen, Star, Trash2 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, errorMessage } from '../../lib/api.js';
 import { useMe } from '../../lib/auth.js';
 import { greetingKey, t } from '../../lib/i18n.js';
@@ -14,6 +14,10 @@ import { Composer, type ComposerHandle } from './Composer.js';
 import { MessageList } from './MessageList.js';
 import { useStreams } from './store.js';
 import { useChat } from './useChat.js';
+import { ArtifactWorkspace } from '../artifacts/ArtifactWorkspace.js';
+import { ArtifactTypeIcon } from '../artifacts/ArtifactCard.js';
+import { useConversationArtifacts } from '../artifacts/api.js';
+import { useArtifactPanel } from '../artifacts/panel.js';
 
 function ContextMeter({ used, total }: { used: number; total: number }) {
   const ratio = Math.min(1, used / Math.max(1, total));
@@ -50,6 +54,28 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
   const styles = useQuery({ queryKey: ['styles'], queryFn: () => api<{ builtin: { id: string; name: string }[]; custom: { id: string; name: string }[] }>('/api/styles') });
 
   const conv = chat.tree.data?.conversation;
+  const qc = useQueryClient();
+  const panel = useArtifactPanel();
+  const convArtifacts = useConversationArtifacts(conversationId);
+  const seenArtifactEvents = useRef(new Set<string>());
+
+  // Each chat has its own artifacts: close the panel when switching chats.
+  const closePanel = panel.close;
+  useEffect(() => closePanel, [conversationId, closePanel]);
+
+  // When the model creates or edits an artifact, refresh it and show it.
+  const openPanel = panel.open;
+  useEffect(() => {
+    for (const m of chat.path) {
+      for (const ev of streams[m.id]?.artifacts ?? []) {
+        const key = `${m.id}:${ev.id}:${ev.version}`;
+        if (seenArtifactEvents.current.has(key)) continue;
+        seenArtifactEvents.current.add(key);
+        void qc.invalidateQueries({ queryKey: ['artifacts'] });
+        openPanel(ev.id);
+      }
+    }
+  }, [chat.path, streams, qc, openPanel]);
   const projectId = conv?.projectId ?? (!conversationId ? (search.project ?? null) : null);
   const project = useQuery({ queryKey: ['project-name', projectId], queryFn: () => api<{ project: { id: string; name: string; color: string } }>(`/api/projects/${projectId}`).then((r) => r.project), enabled: Boolean(projectId), staleTime: 60_000 });
   useEffect(() => {
@@ -85,7 +111,16 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
   const starters = startersFor(me.user.onboarding.useCases);
   const usageNumbers = lastUsage && lastUsage.contextWindow ? lastUsage : null;
 
+  const sendText = async (text: string) => {
+    try {
+      await chat.send(text, { ...(modelId !== 'auto' ? { modelId } : {}), incognito, projectId });
+    } catch (e) {
+      toast.error('Message not sent', errorMessage(e));
+    }
+  };
+
   return (
+    <ArtifactWorkspace onAsk={conversationId ? (t) => void sendText(t) : undefined}>
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-center gap-2 border-b border-border px-4 py-2">
         {conv && titleEditing ? (
@@ -99,6 +134,14 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
         )}
         {project.data ? <Link to="/projects/$projectId" params={{ projectId: project.data.id }} className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-fg-2 hover:bg-hover"><span className="h-2 w-2 rounded-full" style={{ background: project.data.color }} aria-hidden="true" />{project.data.name}</Link> : null}
         {conv?.incognito || (!conv && incognito) ? <Badge tone="warning"><EyeOff size={10} aria-hidden="true" /> Temporary — not saved to history</Badge> : null}
+        {convArtifacts.data?.length ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button size="sm" variant="ghost" aria-label={`Artifacts in this chat (${convArtifacts.data.length})`}><Layers size={14} aria-hidden="true" /> {convArtifacts.data.length}</Button></DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {convArtifacts.data.map((a) => <DropdownMenuItem key={a.id} onSelect={() => panel.open(a.id)}><ArtifactTypeIcon type={a.type} /> <span className="max-w-64 truncate">{a.title}</span></DropdownMenuItem>)}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
         {usageNumbers ? <ContextMeter used={usageNumbers.contextTokens} total={usageNumbers.contextWindow} /> : null}
         {conv ? (
           <DropdownMenu>
@@ -203,5 +246,6 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
         </DialogContent>
       </Dialog>
     </div>
+    </ArtifactWorkspace>
   );
 }

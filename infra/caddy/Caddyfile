@@ -17,7 +17,28 @@
 		file_server
 	}
 
-	header {
+	# The artifact runtime runs untrusted, AI-generated code in a sandboxed iframe (opaque origin). It may run
+	# inline/eval'd scripts but has NO network access: every capability goes through the parent's postMessage bridge.
+	# Any site may frame it (embedded public artifacts nest it), because it refuses to run unless sandboxed.
+	@runtime path /artifact-runtime.html /runtime/*
+	header @runtime {
+		Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-ancestors *; form-action 'none'; base-uri 'none'"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# Published artifacts (/a/*) can be embedded on other sites; everything else refuses framing.
+	@public_artifact path /a/*
+	header @public_artifact {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss:; frame-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors *; form-action 'self'"
+		Referrer-Policy "no-referrer"
+		X-Content-Type-Options "nosniff"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+
+	@app not path /artifact-runtime.html /runtime/* /a/*
+	header @app {
 		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss:; frame-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		X-Content-Type-Options "nosniff"

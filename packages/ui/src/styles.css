@@ -45,6 +45,8 @@
     --lm-radius-sm: 6px; --lm-radius-md: 10px; --lm-radius-lg: 16px; --lm-density: 1;
     --lm-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06); --lm-shadow-md: 0 4px 12px rgb(0 0 0 / 0.08); --lm-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.12);
     --lm-blur: 8px; --lm-motion: 1; --lm-ease: cubic-bezier(0.2, 0, 0, 1); --lm-chat-width: 48rem; --lm-app-bg: var(--lm-bg);
+    --lm-chart-1: #2a78d6; --lm-chart-2: #eb6834; --lm-chart-3: #1baf7a; --lm-chart-4: #eda100;
+    --lm-chart-5: #e87ba4; --lm-chart-6: #008300; --lm-chart-7: #6250d6; --lm-chart-8: #e34948;
     color-scheme: light dark;
   }
   html {
@@ -96,3 +98,11 @@
 .hljs-comment, .hljs-quote, .hljs-meta { color: var(--lm-text-3); font-style: italic; }
 .hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--lm-info); }
 .hljs-deletion, .hljs-variable, .hljs-regexp { color: var(--lm-danger); }
+
+/* Printing one element (artifact "Save as PDF"): everything else is hidden for the print only. */
+@media print {
+  body.lm-printing * { visibility: hidden !important; }
+  body.lm-printing [data-print-root], body.lm-printing [data-print-root] * { visibility: visible !important; }
+  body.lm-printing [data-print-root] { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; }
+  body.lm-printing [data-print-root] * { overflow: visible !important; }
+}

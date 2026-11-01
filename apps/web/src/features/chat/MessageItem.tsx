@@ -7,6 +7,7 @@ import { FileIcon } from '../files/FileIcon.js';
 import { fileUrl } from '../files/upload.js';
 import type { Citation } from './store.js';
 import { ToolCard } from './ToolCard.js';
+import { ArtifactCard, ARTIFACT_TOOLS } from '../artifacts/ArtifactCard.js';
 import type { LiveStream } from './store.js';
 import type { ChatMessage } from './types.js';
 
@@ -71,7 +72,7 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
   if (m.role === 'user') {
     return (
       <article aria-label="Your message" className="group flex justify-end gap-3 py-3" data-message-id={m.id}>
-        <div className="flex max-w-[85%] flex-col items-end gap-1">
+        <div className="flex min-w-0 max-w-[85%] flex-col items-end gap-1">
           {editing ? (
             <form
               className="flex w-[min(40rem,80vw)] flex-col gap-2"
@@ -102,7 +103,7 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
                   ))}
                 </ul>
               ) : null}
-              {m.content ? <div className="whitespace-pre-wrap rounded-lg bg-accent-soft px-4 py-2.5 text-fg">{m.content}</div> : null}
+              {m.content ? <div className="max-w-full whitespace-pre-wrap rounded-lg bg-accent-soft px-4 py-2.5 text-fg [overflow-wrap:anywhere]">{m.content}</div> : null}
             </>
           )}
           <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
@@ -121,7 +122,7 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
       {live?.fallback ? <p className="mb-2 text-xs text-warning">{live.fallback}</p> : null}
       {live?.compacted ? <p className="mb-2 text-xs text-fg-2">Earlier messages were summarized to fit the model’s context window.</p> : null}
       {reasoning ? <Reasoning text={reasoning} streaming={streaming && !text} /> : null}
-      {tools.map((t) => <ToolCard key={t.id} name={t.name} args={t.arguments} result={t.result} />)}
+      {tools.map((t) => (ARTIFACT_TOOLS.has(t.name) ? <ArtifactCard key={t.id} name={t.name} args={t.arguments} result={t.result} live={live?.artifacts} /> : <ToolCard key={t.id} name={t.name} args={t.arguments} result={t.result} />))}
       {text ? <Markdown text={text} citations={citations} /> : streaming ? <span className="inline-flex gap-1 py-2" aria-label="Generating"><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3" /><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3 [animation-delay:150ms]" /><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3 [animation-delay:300ms]" /></span> : null}
       {!streaming ? <SourcesList citations={citations} /> : null}
       {live?.reconnecting ? <p className="mt-1 text-xs text-fg-2" role="status">Reconnecting… your response is still being generated.</p> : null}

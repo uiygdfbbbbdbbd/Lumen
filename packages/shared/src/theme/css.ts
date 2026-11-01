@@ -28,6 +28,16 @@ const fontStack = (f: string, mono: boolean) =>
  * Map a validated theme to CSS custom properties. Every value comes from a validated enum, clamped
  * number or hex color, so the output can't contain injected CSS.
  */
+/**
+ * Categorical chart palettes (fixed order, never cycled), validated for CVD separation against the
+ * built-in light and dark surfaces. Light-mode slots 3–5 are under 3:1 contrast, so charts always ship
+ * a legend and a table view.
+ */
+export const CHART_PALETTES = {
+  light: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'],
+  dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'],
+} as const;
+
 export function themeToCssVars(theme: Theme, opts: { backgroundAssetUrl?: string } = {}): Record<string, string> {
   const c = theme.colors;
   const v: Record<string, string> = {
@@ -71,6 +81,7 @@ export function themeToCssVars(theme: Theme, opts: { backgroundAssetUrl?: string
     '--lm-chat-width': CHAT_WIDTH[theme.chat.width],
     '--lm-color-scheme': theme.mode,
   };
+  CHART_PALETTES[theme.mode].forEach((hex, i) => (v[`--lm-chart-${i + 1}`] = hex));
   const bg = theme.background;
   if (bg.type === 'gradient') v['--lm-app-bg'] = `linear-gradient(${bg.angle}deg, ${bg.from}, ${bg.to})`;
   else if (bg.type === 'image' && opts.backgroundAssetUrl && /^(https?:\/\/|\/)[^\s"'()]+$/.test(opts.backgroundAssetUrl)) {

@@ -6,3 +6,6 @@ onlyBuiltDependencies:
   - "@node-rs/argon2"
   - esbuild
   - msgpackr-extract
+# One @types/node for the whole workspace, so tools with it as a peer (vitest, vite) resolve to a single copy.
+overrides:
+  "@types/node": "^22.20.5"

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Dialog as RDialog } from 'radix-ui';
 import { cn } from '@lumen/ui';
-import { Bot, EyeOff, MessageSquare, Moon, Search, Settings, Shield, Sparkles } from 'lucide-react';
+import { Bot, EyeOff, FolderKanban, FolderOpen, Layers, MessageSquare, Moon, Search, Settings, Shield, Sparkles } from 'lucide-react';
 import { hasPermission, useMe } from '../../lib/auth.js';
 import { useThemeStore } from '../../lib/theme.js';
 import { formatCombo, resolveBindings } from '../../lib/shortcuts.js';
@@ -67,6 +67,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       { id: 'new', group: 'Actions', label: 'New chat', hint: formatCombo(bindings.newChat), icon: <MessageSquare size={16} />, run: go(() => void navigate({ to: '/' })) },
       { id: 'temp', group: 'Actions', label: 'New temporary chat', hint: formatCombo(bindings.temporaryChat), icon: <EyeOff size={16} />, run: go(() => void navigate({ to: '/temporary' })) },
       { id: 'theme', group: 'Actions', label: 'Toggle light / dark', hint: formatCombo(bindings.toggleTheme), icon: <Moon size={16} />, run: go(() => theme.set({ mode: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark' })) },
+      { id: 'go-projects', group: 'Go to', label: 'Projects', icon: <FolderKanban size={16} />, run: go(() => void navigate({ to: '/projects' })) },
+      { id: 'go-files', group: 'Go to', label: 'Files', icon: <FolderOpen size={16} />, run: go(() => void navigate({ to: '/files' })) },
+      { id: 'go-artifacts', group: 'Go to', label: 'Artifacts', icon: <Layers size={16} />, run: go(() => void navigate({ to: '/artifacts' })) },
       ...(['account', 'security', 'appearance', 'chat', 'shortcuts', 'usage', 'privacy'] as const).map((s) => ({ id: `settings-${s}`, group: 'Settings', label: `Settings: ${s[0]!.toUpperCase()}${s.slice(1)}`, icon: <Settings size={16} />, run: go(() => void navigate({ to: `/settings/${s}` })) })),
       ...(hasPermission(me, 'admin:access') ? [{ id: 'admin', group: 'Admin', label: 'Admin console', icon: <Shield size={16} />, run: go(() => void navigate({ to: '/admin' })) }] : []),
       ...models.filter((m) => m.available).map((m) => ({ id: `model-${m.id}`, group: 'Default model', label: `Use ${m.displayName}`, hint: m.providerName, icon: <Bot size={16} />, run: go(() => updatePrefs.mutate({ defaultModel: m.id })) })),

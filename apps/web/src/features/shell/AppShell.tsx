@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-router';
 import { Avatar, Banner, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, IconButton, Kbd, cn } from '@lumen/ui';
-import { Archive, Download, EyeOff, FolderKanban, FolderOpen, Keyboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Palette, Plus, Search, Settings, Shield, ShieldCheck, X } from 'lucide-react';
+import { Archive, Download, EyeOff, FolderKanban, FolderOpen, Keyboard, Layers, LogOut, Menu, Palette, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Shield, ShieldCheck, X } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { hasPermission, useLogout, useMe, useSetMe, type MeResponse } from '../../lib/auth.js';
 import { formatCombo, resolveBindings, useShortcuts } from '../../lib/shortcuts.js';
@@ -114,6 +114,7 @@ export function AppShell() {
       <div className="flex flex-col gap-1 border-t border-border pt-2">
         <Link to="/projects" onClick={closeDrawer} className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm', path.startsWith('/projects') ? 'bg-accent-soft text-fg' : 'text-fg-2 hover:bg-hover')}><FolderKanban size={16} aria-hidden="true" /> Projects</Link>
         <Link to="/files" onClick={closeDrawer} className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm', path.startsWith('/files') ? 'bg-accent-soft text-fg' : 'text-fg-2 hover:bg-hover')}><FolderOpen size={16} aria-hidden="true" /> Files</Link>
+        <Link to="/artifacts" onClick={closeDrawer} className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm', path.startsWith('/artifacts') ? 'bg-accent-soft text-fg' : 'text-fg-2 hover:bg-hover')}><Layers size={16} aria-hidden="true" /> Artifacts</Link>
         <Link to="/settings/appearance" data-tour="themes" onClick={closeDrawer} className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm', path.startsWith('/settings/appearance') ? 'bg-accent-soft text-fg' : 'text-fg-2 hover:bg-hover')}><Palette size={16} aria-hidden="true" /> Themes</Link>
         <Link to="/settings/account" data-tour="settings" onClick={closeDrawer} className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm', path.startsWith('/settings') && !path.startsWith('/settings/appearance') ? 'bg-accent-soft text-fg' : 'text-fg-2 hover:bg-hover')}><Settings size={16} aria-hidden="true" /> Settings</Link>
         {hasPermission(me, 'admin:access') ? <Link to="/admin" onClick={closeDrawer} className={cn('flex items-center gap-3 rounded-md px-3 py-2 text-sm', path.startsWith('/admin') ? 'bg-accent-soft text-fg' : 'text-fg-2 hover:bg-hover')}><ShieldCheck size={16} aria-hidden="true" /> Admin</Link> : null}

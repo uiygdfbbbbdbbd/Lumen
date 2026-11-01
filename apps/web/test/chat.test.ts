@@ -42,7 +42,7 @@ describe('message tree', () => {
 
 describe('live stream reducer', () => {
   it('accumulates text, reasoning, tools and terminal states', () => {
-    let s = { text: '', reasoning: '', tools: [], status: 'streaming' as const, error: null, fallback: null, compacted: false, reconnecting: true, usage: null, citations: [] } as Parameters<typeof reduce>[0];
+    let s = { text: '', reasoning: '', tools: [], status: 'streaming' as const, error: null, fallback: null, compacted: false, reconnecting: true, usage: null, citations: [], artifacts: [] } as Parameters<typeof reduce>[0];
     const events: ChatStreamEvent[] = [
       { type: 'reasoning', text: 'hm' },
       { type: 'text', text: 'Hel' },

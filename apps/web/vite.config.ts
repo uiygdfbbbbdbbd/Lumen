@@ -50,6 +50,6 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['test/**/*.test.tsx', 'test/**/*.test.ts'],
     setupFiles: ['test/setup.ts'],
-    coverage: { provider: 'v8', include: ['src/lib/**', 'src/features/shell/starters.ts', 'src/features/chat/{tree,store,stream}.ts'], exclude: ['src/lib/auth.ts', 'src/lib/pwa.ts'], thresholds: { lines: 80 } },
+    coverage: { provider: 'v8', include: ['src/lib/**', 'src/features/shell/starters.ts', 'src/features/chat/{tree,store,stream}.ts', 'src/features/artifacts/{files,panel}.ts', 'src/features/artifacts/renderers/{chart-layout,latex}.ts'], exclude: ['src/lib/auth.ts', 'src/lib/pwa.ts'], thresholds: { lines: 80 } },
   },
 });
