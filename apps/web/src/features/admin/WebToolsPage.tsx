@@ -124,6 +124,7 @@ export function WebToolsPage() {
         ) : null}
         <p className="mt-2 text-xs text-fg-3">Saved settings apply to new messages. Unsaved changes aren’t used by “Test search”.</p>
       </Card>
+      <ImageSettingsCard />
       <Card>
         <CardHeader title="Data tools" description="Lookups that use free public data services." />
         <SwitchRow label={<>Weather <Badge>Open-Meteo</Badge></>} checked={tools.weather} onCheckedChange={(v) => setTools({ ...tools, weather: v })} />
@@ -133,5 +134,33 @@ export function WebToolsPage() {
         </div>
       </Card>
     </>
+  );
+}
+
+function ImageSettingsCard() {
+  const qc = useQueryClient();
+  const settings = useQuery({ queryKey: ['admin', 'settings'], queryFn: () => api<{ images: { defaultModelId: string | null; maxPerRequest: number } }>('/api/admin/settings') });
+  const models = useQuery({ queryKey: ['admin', 'models'], queryFn: () => api<{ items: { id: string; displayName: string; providerModelId: string; enabled: boolean; capabilities: { imageGen?: boolean } }[] }>('/api/admin/models').then((r) => r.items) });
+  const [cfg, setCfg] = useState<{ defaultModelId: string | null; maxPerRequest: number } | null>(null);
+  useEffect(() => setCfg(settings.data?.images ?? null), [settings.data]);
+  if (!cfg) return null;
+  const imageModels = (models.data ?? []).filter((m) => m.capabilities.imageGen && m.enabled);
+  return (
+    <Card>
+      <CardHeader title="Image generation" description="Models with the “image generation” capability create images in chat and on the Images page. Add Stability, Replicate, ComfyUI or an OpenAI-compatible images API under Providers. Daily limits per user come from tiers." />
+      {!imageModels.length ? <Banner tone="info" className="mb-3">No enabled image models yet.</Banner> : null}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Default image model">
+          <Select value={cfg.defaultModelId ?? ''} onChange={(e) => setCfg({ ...cfg, defaultModelId: e.target.value || null })}>
+            <option value="">First available</option>
+            {imageModels.map((m) => <option key={m.id} value={m.id}>{m.displayName} ({m.providerModelId})</option>)}
+          </Select>
+        </Field>
+        <Field label="Max images per request"><Input type="number" min={1} max={4} value={cfg.maxPerRequest} onChange={(e) => setCfg({ ...cfg, maxPerRequest: Number(e.target.value) })} /></Field>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <Button onClick={async () => { try { await api('/api/admin/settings/images', { method: 'PUT', body: cfg }); await qc.invalidateQueries({ queryKey: ['admin', 'settings'] }); toast.success('Image settings saved'); } catch (e) { toast.error('Couldn’t save', errorMessage(e)); } }}>Save image settings</Button>
+      </div>
+    </Card>
   );
 }

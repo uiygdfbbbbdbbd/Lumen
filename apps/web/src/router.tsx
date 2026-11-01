@@ -141,6 +141,7 @@ const publicArtifactRoute = createRoute({
   validateSearch: (s: Record<string, unknown>): { embed?: '1' } => (s.embed === '1' || s.embed === 1 ? { embed: '1' as const } : {}),
   component: lazyRouteComponent(() => import('./features/artifacts/PublicArtifactPage.js'), 'PublicArtifactPage'),
 });
+const imagesRoute = createRoute({ getParentRoute: () => shell, path: '/images', component: lazyRouteComponent(() => import('./features/images/ImagesPage.js'), 'ImagesPage') });
 const settingsRoute = createRoute({ getParentRoute: () => shell, path: '/settings', component: SettingsLayout });
 const settingsIndex = createRoute({ getParentRoute: () => settingsRoute, path: '/', beforeLoad: () => { throw redirect({ to: '/settings/account' }); } });
 const accountRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/account', component: ProfileSettings });
@@ -172,7 +173,7 @@ const routeTree = root.addChildren([
   guest.addChildren([loginRoute, signupRoute, forgotRoute, resetRoute, verifyRoute, magicRoute, emailChangeRoute]),
   authed.addChildren([
     onboardingRoute,
-    shell.addChildren([homeRoute, chatRoute, temporaryRoute, filesRoute, projectsRoute, projectRoute, artifactsRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, memoryRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels, adminRag, adminWeb])]),
+    shell.addChildren([homeRoute, chatRoute, temporaryRoute, filesRoute, projectsRoute, projectRoute, artifactsRoute, imagesRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, memoryRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels, adminRag, adminWeb])]),
   ]),
 ]);
 

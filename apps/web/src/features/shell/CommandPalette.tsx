@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Dialog as RDialog } from 'radix-ui';
 import { cn } from '@lumen/ui';
-import { Bot, EyeOff, FolderKanban, FolderOpen, Layers, MessageSquare, Moon, Search, Settings, Shield, Sparkles } from 'lucide-react';
+import { Bot, EyeOff, FolderKanban, FolderOpen, ImageIcon, Layers, MessageSquare, Moon, Search, Settings, Shield, Sparkles } from 'lucide-react';
 import { hasPermission, useMe } from '../../lib/auth.js';
 import { useThemeStore } from '../../lib/theme.js';
 import { formatCombo, resolveBindings } from '../../lib/shortcuts.js';
@@ -69,6 +69,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       { id: 'theme', group: 'Actions', label: 'Toggle light / dark', hint: formatCombo(bindings.toggleTheme), icon: <Moon size={16} />, run: go(() => theme.set({ mode: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark' })) },
       { id: 'go-projects', group: 'Go to', label: 'Projects', icon: <FolderKanban size={16} />, run: go(() => void navigate({ to: '/projects' })) },
       { id: 'go-files', group: 'Go to', label: 'Files', icon: <FolderOpen size={16} />, run: go(() => void navigate({ to: '/files' })) },
+      { id: 'go-images', group: 'Go to', label: 'Images', icon: <ImageIcon size={16} />, run: go(() => void navigate({ to: '/images' })) },
       { id: 'go-artifacts', group: 'Go to', label: 'Artifacts', icon: <Layers size={16} />, run: go(() => void navigate({ to: '/artifacts' })) },
       ...(['account', 'security', 'appearance', 'chat', 'memory', 'shortcuts', 'usage', 'privacy'] as const).map((s) => ({ id: `settings-${s}`, group: 'Settings', label: `Settings: ${s[0]!.toUpperCase()}${s.slice(1)}`, icon: <Settings size={16} />, run: go(() => void navigate({ to: `/settings/${s}` })) })),
       ...(hasPermission(me, 'admin:access') ? [{ id: 'admin', group: 'Admin', label: 'Admin console', icon: <Shield size={16} />, run: go(() => void navigate({ to: '/admin' })) }] : []),

@@ -46,6 +46,8 @@ import { conversationSearchTool, memoryTools } from './services/tools/memory-too
 import { MemoryService } from './services/memory/memory.service.js';
 import { WebService } from './services/web/web.service.js';
 import { ResearchService } from './services/research/research.service.js';
+import { ImageService } from './services/images/image.service.js';
+import { imageTools } from './services/tools/image-tools.js';
 import { webTools } from './services/tools/web-tools.js';
 import { utilityTools } from './services/tools/utility-tools.js';
 import { interactiveTools } from './services/tools/interactive-tools.js';
@@ -118,6 +120,7 @@ export interface Container {
   memory: MemoryService;
   web: WebService;
   research: ResearchService;
+  images: ImageService;
   apiKeyAuth: ApiKeyAuthenticator | null;
   now: () => Date;
   close(): Promise<void>;
@@ -207,10 +210,12 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   const memorySvc = new MemoryService({ db, settings, embeddings, projects, catalog, providers, entitlements, jobs, log, now });
   for (const t of memoryTools(memorySvc)) tools.register(t);
   const web = new WebService(settings, box, log, urlFetch, Date.now, o.externalFetch);
+  const images = new ImageService(db, catalog, providers, entitlements, filesSvc, settings, log);
+  for (const t of imageTools(images, entitlements)) tools.register(t);
   for (const t of [...webTools(web), ...utilityTools(settings, o.externalFetch), ...interactiveTools()]) tools.register(t);
   tools.register(conversationSearchTool(conversationsSvc));
   const runner = new GenerationRunner({ db, hub, bus, providers, catalog, entitlements, tools, rateLimiter, log, now });
-  const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now, files: filesSvc, fileContext, projects, memory: memorySvc, web });
+  const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now, files: filesSvc, fileContext, projects, memory: memorySvc, web, images });
   const research = new ResearchService({ db, conversations: conversationsSvc, catalog, providers, entitlements, web, artifacts: artifactsSvc, hub, bus, jobs, log, now });
   const stylesSvc = new StyleService(db, catalog, providers);
 
@@ -255,6 +260,7 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     memory: memorySvc,
     web,
     research,
+    images,
     apiKeyAuth: null,
     now,
     async close() {

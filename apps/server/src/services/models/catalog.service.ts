@@ -23,6 +23,9 @@ export function lockReason(m: Pick<ModelRow, 'visibility'>, viewer: Viewer): Mod
   return null;
 }
 
+/** Image-generation models are kept out of chat pickers and chat defaults. */
+export const isImageModel = (caps: { imageGen?: boolean } | null | undefined) => caps?.imageGen === true;
+
 export class ModelCatalogService {
   constructor(
     private readonly db: Database,
@@ -189,7 +192,7 @@ export class ModelCatalogService {
         /* fall through */
       }
     }
-    const list = await this.listForUser(viewer, null as never);
+    const list = (await this.listForUser(viewer, null as never)).filter((m) => !isImageModel(m.capabilities));
     const pick = list.find((m) => m.recommended && m.available) ?? list.find((m) => m.available);
     return pick ? this.resolve(pick.id, viewer) : null;
   }

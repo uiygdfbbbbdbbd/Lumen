@@ -238,3 +238,11 @@ answer) is sent as their next message. No extra model call is spent waiting.
 ## D46. ALLOW_PRIVATE_FETCH is for development and tests only
 Production keeps web/knowledge fetches off private networks. The flag lets dev/E2E environments fetch local
 test pages; cloud metadata addresses stay blocked either way.
+
+## D47. Image generation goes through image-capable models
+Image providers are ordinary providers (new types: Stability, Replicate, ComfyUI; OpenAI-compatible providers
+use `/images/generations`). Any model with the `imageGen` capability is an image model: it's kept out of chat
+pickers and chat defaults and listed via `/api/models?kind=image`. Generated pixels are stored through the
+file service (quota, EXIF stripping, sandboxed serving) and described by `generated_images` rows. The daily cap
+is charged up front and refunded for anything not produced. Variations re-run the prompt with new seeds,
+which works with every provider (not every API supports image-to-image variations).

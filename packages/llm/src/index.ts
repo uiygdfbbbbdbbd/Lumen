@@ -8,3 +8,4 @@ export { AnthropicAdapter } from './adapters/anthropic.js';
 export { GeminiAdapter } from './adapters/gemini.js';
 export { OllamaAdapter } from './adapters/ollama.js';
 export { CohereAdapter } from './adapters/cohere.js';
+export * from './images.js';

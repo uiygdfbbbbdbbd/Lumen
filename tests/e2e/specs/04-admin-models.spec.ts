@@ -25,9 +25,9 @@ test('admin adds a provider, tests it, imports and enables models; key is never 
   const card = page.locator('li', { hasText: 'Mock Cloud' });
   await card.getByRole('button', { name: 'Test' }).click();
   await expect(card.getByText(/Connected in \d+ ms/)).toBeVisible();
-  await expect(card.getByText(/Found 5 models/)).toBeVisible();
+  await expect(card.getByText(/Found 6 models/)).toBeVisible();
   await card.getByRole('button', { name: 'Import models' }).click();
-  await expect(page.getByText('Imported 5 new models').first()).toBeVisible();
+  await expect(page.getByText('Imported 6 new models').first()).toBeVisible();
 
   // Editing shows only the masked key with a "Replace key" flow.
   await card.getByRole('button', { name: 'Edit Mock Cloud' }).click();
@@ -40,6 +40,8 @@ test('admin adds a provider, tests it, imports and enables models; key is never 
   await page.getByRole('link', { name: 'Models' }).click();
   await page.getByRole('switch', { name: 'Enable mock-fast' }).click();
   await page.getByRole('switch', { name: 'Enable mock-smart' }).click();
+  await page.getByRole('switch', { name: 'Enable mock-image' }).click();
+  await expect(page.getByRole('switch', { name: 'Enable mock-image' })).toBeChecked();
   await page.getByRole('switch', { name: 'Recommend mock-smart' }).click();
   await page.getByLabel('Visibility of mock-smart').selectOption('verified');
   await expect(page.getByRole('switch', { name: 'Enable mock-smart' })).toBeChecked();

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { patchOf } from './common.js';
 
-export const PROVIDER_TYPE_VALUES = ['openai', 'anthropic', 'gemini', 'ollama', 'cohere', 'mistral', 'openrouter', 'vllm', 'lmstudio', 'custom'] as const;
+export const PROVIDER_TYPE_VALUES = ['openai', 'anthropic', 'gemini', 'ollama', 'cohere', 'mistral', 'openrouter', 'vllm', 'lmstudio', 'custom', 'stability', 'replicate', 'comfyui'] as const;
 export const MODEL_VISIBILITY = ['everyone', 'verified', 'admins', 'beta'] as const;
 
 const headerName = z.string().regex(/^[A-Za-z0-9-]{1,64}$/, 'Invalid header name');

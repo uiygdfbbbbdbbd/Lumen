@@ -84,7 +84,7 @@ describe('provider CRUD and secret handling', () => {
     const p = (await createProvider()).json();
     const r = (await admin.post(`/api/admin/providers/${p.id}/test`)).json();
     expect(r.ok).toBe(true);
-    expect(r.modelCount).toBe(5);
+    expect(r.modelCount).toBe(6);
     expect(r.completion).toMatch(/You said/);
     const view = (await admin.get(`/api/admin/providers/${p.id}`)).json();
     expect(view.health.status).toBe('healthy');
@@ -146,8 +146,8 @@ describe('models, visibility, aliases', () => {
   });
 
   it('imports models (disabled by default) idempotently', async () => {
-    expect((await admin.post(`/api/admin/providers/${providerId}/import-models`, { enable: false })).json()).toEqual({ added: 5, existing: 0 });
-    expect((await admin.post(`/api/admin/providers/${providerId}/import-models`, { enable: false })).json()).toEqual({ added: 0, existing: 5 });
+    expect((await admin.post(`/api/admin/providers/${providerId}/import-models`, { enable: false })).json()).toEqual({ added: 6, existing: 0 });
+    expect((await admin.post(`/api/admin/providers/${providerId}/import-models`, { enable: false })).json()).toEqual({ added: 0, existing: 6 });
     const list = (await admin.get(`/api/admin/models?providerId=${providerId}`)).json().items as { providerModelId: string; enabled: boolean; capabilities: { vision: boolean; reasoning: boolean } }[];
     expect(list.every((m) => !m.enabled)).toBe(true);
     expect(list.find((m) => m.providerModelId === 'mock-vision')!.capabilities.vision).toBe(true);

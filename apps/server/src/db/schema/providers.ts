@@ -1,6 +1,6 @@
 import { boolean, date, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
-export const providerTypeEnum = pgEnum('provider_type', ['openai', 'anthropic', 'gemini', 'ollama', 'cohere', 'mistral', 'openrouter', 'vllm', 'lmstudio', 'custom']);
+export const providerTypeEnum = pgEnum('provider_type', ['openai', 'anthropic', 'gemini', 'ollama', 'cohere', 'mistral', 'openrouter', 'vllm', 'lmstudio', 'custom', 'stability', 'replicate', 'comfyui']);
 export const healthStatusEnum = pgEnum('health_status', ['unknown', 'healthy', 'degraded', 'down']);
 export const modelVisibilityEnum = pgEnum('model_visibility', ['everyone', 'verified', 'admins', 'beta']);
 

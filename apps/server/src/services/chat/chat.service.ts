@@ -22,7 +22,9 @@ import { ARTIFACT_GUIDANCE } from '../tools/artifact-tools.js';
 import { HISTORY_GUIDANCE, MEMORY_GUIDANCE, MEMORY_TOOLS } from '../tools/memory-tools.js';
 import { INTERACTIVE_GUIDANCE, INTERACTIVE_TOOLS } from '../tools/interactive-tools.js';
 import { WEB_GUIDANCE, WEB_TOOLS } from '../tools/web-tools.js';
+import { IMAGE_GUIDANCE } from '../tools/image-tools.js';
 import type { WebService } from '../web/web.service.js';
+import type { ImageService } from '../images/image.service.js';
 import type { MemoryService } from '../memory/memory.service.js';
 
 export const DEFAULT_TOOLS = ['calculator', 'current_datetime', 'convert_units', 'create_artifact', 'update_artifact', 'rewrite_artifact', ...INTERACTIVE_TOOLS];
@@ -45,6 +47,7 @@ export interface ChatDeps {
   projects: ProjectService;
   memory: MemoryService;
   web: WebService;
+  images: ImageService;
 }
 
 type Thinking = 'off' | 'low' | 'medium' | 'high';
@@ -110,11 +113,15 @@ export class ChatService {
   }
 
   /** Tools that depend on server configuration and the user's tier. */
-  private async extraTools(ent: Entitlements) {
+  private async extraTools(user: UserRow, ent: Entitlements) {
     const out = { tools: [] as string[], guidance: [] as string[] };
     const toggles = await this.d.settings.get('tools');
     if (toggles.weather) out.tools.push('get_weather');
     if (toggles.currency) out.tools.push('convert_currency');
+    if (ent.features.imageGeneration.allowed && (await this.d.images.models(user)).some((m) => m.available)) {
+      out.tools.push('generate_image');
+      out.guidance.push(IMAGE_GUIDANCE);
+    }
     if (ent.features.webSearch.allowed) {
       out.tools.push(...((await this.d.web.configured()) ? WEB_TOOLS : ['web_fetch']));
       out.guidance.push(WEB_GUIDANCE);
@@ -178,7 +185,7 @@ export class ChatService {
     const prefs = this.prefs(user);
     const query = parent.role === 'user' ? parent.content : '';
     const mem = await this.memoryContext(user, conv, query);
-    const extra = await this.extraTools(opts.ent);
+    const extra = await this.extraTools(user, opts.ent);
     for (const [i, a] of created.entries()) {
       const model = models[i]!;
       const fctx = await this.d.fileContext.build({ conversationId: conv.id, projectId: conv.projectId, latestUserMessageId: parent.id, query, vision: model.model.capabilities.vision, userId: user.id });

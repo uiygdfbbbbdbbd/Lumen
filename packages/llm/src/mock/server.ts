@@ -1,3 +1,4 @@
+import { makePng } from './png.js';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { plan, type NormalizedTurn, type Plan } from './script.js';
@@ -32,6 +33,7 @@ export const MOCK_MODELS = [
   { id: 'mock-vision', name: 'Mock Vision', context: 128000 },
   { id: 'mock-reasoning', name: 'Mock Reasoning', context: 128000 },
   { id: 'mock-embed', name: 'Mock Embed', context: 8192 },
+  { id: 'mock-image', name: 'Mock Image', context: 4096 },
 ];
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- wire formats of five providers
@@ -197,6 +199,18 @@ export async function startMockProvider(opts: { port?: number; host?: string; ap
           return json(200, kind === 'anthropic' ? { data: MOCK_MODELS.map((m) => ({ id: m.id, display_name: m.name, type: 'model' })) } : { object: 'list', data: MOCK_MODELS.map((m) => ({ id: m.id, object: 'model', context_length: m.context })) });
         }
         return json(404, { error: { message: 'not found' } });
+      }
+
+      // OpenAI-style image generation: deterministic PNGs colored by the prompt; "[blocked]" is refused.
+      if (path === '/v1/images/generations' || path === '/images/generations') {
+        const prompt = String(body.prompt ?? '');
+        if (!MOCK_MODELS.some((m) => m.id === body.model)) return json(404, errorBody('openai', 404));
+        if (prompt.includes('[blocked]')) return json(400, { error: { message: 'Your request was rejected by the safety system.', type: 'invalid_request_error', code: 'content_policy_violation' } });
+        const [w, h] = String(body.size ?? '1024x1024').split('x').map((v) => Math.max(8, Math.round(Number(v) / 32)));
+        let hash = 0;
+        for (const ch of prompt) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+        const n = Math.min(4, Math.max(1, Number(body.n ?? 1)));
+        return json(200, { created: 0, data: Array.from({ length: n }, (_, i) => ({ b64_json: makePng(w!, h!, [(hash >> 16) & 255, (hash >> 8) & 255, (hash + i * 60) & 255]).toString('base64'), revised_prompt: `${prompt} (mock)` })) });
       }
 
       // Embeddings endpoints (all five dialects).

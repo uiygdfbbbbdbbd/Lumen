@@ -69,6 +69,11 @@ export const settingSchemas = {
     /** Domains never shown or fetched (source quality filter). */
     blockedDomains: z.array(z.string().max(253)).max(1000),
   }),
+  images: z.object({
+    /** Image model used when the user doesn't pick one. Null = first enabled image model. */
+    defaultModelId: z.string().max(200).nullable(),
+    maxPerRequest: z.number().int().min(1).max(4),
+  }),
   tools: z.object({
     /** Open-Meteo weather (no key needed). */
     weather: z.boolean(),
@@ -141,6 +146,7 @@ export const DEFAULT_SETTINGS: AllSettings = {
     maxArchiveBytes: 500 * 1024 * 1024,
   },
   webSearch: { provider: 'none', baseUrl: '', apiKeyEncrypted: null, maxResults: 6, safeSearch: true, respectRobots: true, cacheTtlMinutes: 60, fetchMaxChars: 20_000, blockedDomains: [] },
+  images: { defaultModelId: null, maxPerRequest: 4 },
   tools: { weather: true, currency: true },
   memory: { tokenBudget: 800, maxPerTurn: 15, maxPerUser: 1000, consolidateAfterWrites: 15 },
 };

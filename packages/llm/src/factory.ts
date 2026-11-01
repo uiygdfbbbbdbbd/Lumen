@@ -1,3 +1,4 @@
+import { ComfyUIAdapter, ReplicateAdapter, StabilityAdapter } from './images.js';
 import { AnthropicAdapter } from './adapters/anthropic.js';
 import { CohereAdapter } from './adapters/cohere.js';
 import { GeminiAdapter } from './adapters/gemini.js';
@@ -17,6 +18,9 @@ export const PROVIDER_PRESETS: Record<ProviderType, { label: string; baseUrl: st
   vllm: { label: 'vLLM', baseUrl: 'http://localhost:8000/v1', needsKey: false, description: 'Self-hosted vLLM (OpenAI-compatible).' },
   lmstudio: { label: 'LM Studio', baseUrl: 'http://localhost:1234/v1', needsKey: false, description: 'LM Studio local server.' },
   custom: { label: 'Custom (OpenAI-compatible)', baseUrl: 'https://', needsKey: false, description: 'Any OpenAI-compatible endpoint.' },
+  stability: { label: 'Stability AI', baseUrl: 'https://api.stability.ai', needsKey: true, description: 'Stable Image / SD3 image generation.' },
+  replicate: { label: 'Replicate', baseUrl: 'https://api.replicate.com', needsKey: true, description: 'FLUX and other image models on Replicate.' },
+  comfyui: { label: 'ComfyUI', baseUrl: 'http://localhost:8188', needsKey: false, description: 'Local ComfyUI server (checkpoints become models).' },
 };
 
 export const PROVIDER_TYPES = Object.keys(PROVIDER_PRESETS) as ProviderType[];
@@ -31,6 +35,12 @@ export function createAdapter(cfg: ProviderConfig): ProviderAdapter {
       return new OllamaAdapter(cfg);
     case 'cohere':
       return new CohereAdapter(cfg);
+    case 'stability':
+      return new StabilityAdapter(cfg);
+    case 'replicate':
+      return new ReplicateAdapter(cfg);
+    case 'comfyui':
+      return new ComfyUIAdapter(cfg);
     default:
       return new OpenAIAdapter(cfg, cfg.type);
   }

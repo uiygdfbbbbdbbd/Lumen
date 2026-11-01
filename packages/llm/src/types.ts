@@ -1,6 +1,6 @@
 /** Provider-neutral request/response model. Every adapter converts to and from these shapes. */
 
-export type ProviderType = 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'cohere' | 'mistral' | 'openrouter' | 'vllm' | 'lmstudio' | 'custom';
+export type ProviderType = 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'cohere' | 'mistral' | 'openrouter' | 'vllm' | 'lmstudio' | 'custom' | 'stability' | 'replicate' | 'comfyui';
 
 export type ContentPart =
   | { type: 'text'; text: string }
@@ -101,6 +101,8 @@ export interface ProviderAdapter {
   listModels(signal?: AbortSignal): Promise<ModelInfo[]>;
   /** Text embeddings. Providers without an embeddings API throw LlmError('invalid_request'). */
   embed(model: string, inputs: string[], signal?: AbortSignal): Promise<EmbeddingResult>;
+  /** Image generation, for providers that offer it. */
+  generateImages?(req: import('./images.js').ImageRequest, signal?: AbortSignal): Promise<import('./images.js').ImageResult>;
 }
 
 /** Errors are normalized so the UI can show "rate limited", "quota", "provider down" etc. */

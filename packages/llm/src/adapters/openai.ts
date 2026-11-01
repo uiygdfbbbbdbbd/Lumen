@@ -1,3 +1,4 @@
+import { openAiImages, type ImageRequest, type ImageResult } from '../images.js';
 import { joinUrl, jsonHeaders, request } from '../http.js';
 import { parseSse, parseToolArguments } from '../streams.js';
 import { LlmError, type ChatMessage, type EmbeddingResult, type ChatRequest, type FinishReason, type ModelInfo, type ProviderAdapter, type ProviderConfig, type ProviderType, type StreamEvent } from '../types.js';
@@ -128,6 +129,10 @@ export class OpenAIAdapter implements ProviderAdapter {
     const res = await request(this.cfg, joinUrl(this.cfg.baseUrl, 'embeddings'), { method: 'POST', headers: this.headers(), body: JSON.stringify({ model, input: inputs }), signal });
     const j = (await res.json()) as { data: { index: number; embedding: number[] }[]; usage?: { prompt_tokens?: number } };
     return { vectors: [...j.data].sort((a, b) => a.index - b.index).map((d) => d.embedding), inputTokens: j.usage?.prompt_tokens ?? 0 };
+  }
+
+  async generateImages(req: ImageRequest, signal?: AbortSignal): Promise<ImageResult> {
+    return openAiImages(this.cfg, this.headers(), req, signal);
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { LumenError, userPreferencesSchema } from '@lumen/shared';
 import { eq, sql } from 'drizzle-orm';
 import type { Container } from '../container.js';
+import { isImageModel } from '../services/models/catalog.service.js';
 import { route } from '../http/route.js';
 import { users } from '../db/schema/index.js';
 
@@ -11,7 +12,8 @@ export function modelRoutes(app: FastifyInstance, c: Container) {
     method: 'GET',
     url: '/api/models',
     auth: 'user',
-    handler: async ({ auth }) => ({ items: await c.catalog.listForUser(auth.user, auth.entitlements) }),
+    query: z.object({ kind: z.enum(['chat', 'image']).default('chat') }),
+    handler: async ({ auth, query }) => ({ items: (await c.catalog.listForUser(auth.user, auth.entitlements)).filter((m) => isImageModel(m.capabilities) === (query.kind === 'image')) }),
   });
 
   route(app, c, {

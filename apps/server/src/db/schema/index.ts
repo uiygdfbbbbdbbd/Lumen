@@ -9,3 +9,4 @@ export * from './files.js';
 export * from './artifacts.js';
 export * from './memory.js';
 export * from './research.js';
+export * from './images.js';

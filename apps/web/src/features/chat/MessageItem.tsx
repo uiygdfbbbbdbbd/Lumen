@@ -9,7 +9,7 @@ import type { Citation } from './store.js';
 import { ToolCard } from './ToolCard.js';
 import { ArtifactCard, ARTIFACT_TOOLS } from '../artifacts/ArtifactCard.js';
 import { MEMORY_TOOL_NAMES, MemoryToolCard, MemoryUsed } from '../memory/MemoryUsed.js';
-import { AskUserCard, InlineChart, InlineDiagram, WebToolRow } from './ToolViews.js';
+import { AskUserCard, GeneratedImages, InlineChart, InlineDiagram, WebToolRow } from './ToolViews.js';
 import { ResearchCard } from '../research/ResearchCard.js';
 import type { LiveStream } from './store.js';
 import type { ChatMessage } from './types.js';
@@ -137,6 +137,8 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
           <ArtifactCard key={t.id} name={t.name} args={t.arguments} result={t.result} live={live?.artifacts} />
         ) : t.name === 'ask_user' ? (
           <AskUserCard key={t.id} args={t.arguments} answerable={isLast && !streaming} onAnswer={a.onAnswer} />
+        ) : t.name === 'generate_image' ? (
+          <GeneratedImages key={t.id} args={t.arguments} result={t.result} />
         ) : t.name === 'show_chart' ? (
           <InlineChart key={t.id} args={t.arguments} result={t.result} />
         ) : t.name === 'show_diagram' ? (

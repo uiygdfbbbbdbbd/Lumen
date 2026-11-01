@@ -1,11 +1,13 @@
 import { lazy, Suspense, useState } from 'react';
 import { Button, Checkbox, Input, cn } from '@lumen/ui';
 import { CheckCircle2, FileSearch, Globe, Loader2, MessageCircleQuestion, XCircle } from 'lucide-react';
+import { useImages } from '../images/api.js';
+import { ImageCard } from '../images/ImageCard.js';
 
 const ChartView = lazy(() => import('../artifacts/renderers/ChartView.js').then((m) => ({ default: m.ChartView })));
 const Mermaid = lazy(() => import('./Mermaid.js'));
 
-export const INLINE_TOOLS = new Set(['ask_user', 'show_chart', 'show_diagram', 'web_search', 'web_fetch']);
+export const INLINE_TOOLS = new Set(['ask_user', 'show_chart', 'show_diagram', 'web_search', 'web_fetch', 'generate_image']);
 
 type Result = { content: string; isError: boolean } | undefined;
 
@@ -112,4 +114,20 @@ export function WebToolRow({ name, args, result }: { name: string; args: Record<
   if (!result) return <WebRow icon="running" text={`Reading ${host}…`} />;
   if (result.isError) return <WebRow icon="error" text={`Couldn’t read ${host}`} detail={result.content.replace(/^Error:\s*/, '')} />;
   return <WebRow icon="page" text={`Read ${host}`} detail={result.content.split('\n')[0]?.replace(/^\[\d+\]\s*/, '')} />;
+}
+
+/** Images made by the generate_image tool, shown in the reply. */
+export function GeneratedImages({ args, result }: { args: Record<string, unknown>; result: Result }) {
+  const ids = result && !result.isError ? (/image ids: ([0-9a-f-, ]+)/.exec(result.content)?.[1] ?? '').split(/,\s*/).filter(Boolean) : [];
+  const q = useImages(ids);
+  if (!result) return <WebRow icon="running" text={`Creating ${Number(args.n) > 1 ? `${Number(args.n)} images` : 'an image'}…`} />;
+  if (result.isError) return <WebRow icon="error" text="Couldn’t create the image" detail={result.content.replace(/^Error:\s*/, '')} />;
+  return (
+    <ul aria-label="Generated images" className="my-2 grid max-w-xl grid-cols-2 gap-2">
+      {(q.data ?? []).map((img) => (
+        <li key={img.id} className={(q.data?.length ?? 0) === 1 ? 'col-span-2' : ''}><ImageCard img={img} /></li>
+      ))}
+      {q.isLoading ? <li className="aspect-square animate-pulse rounded-lg bg-surface" /> : null}
+    </ul>
+  );
 }

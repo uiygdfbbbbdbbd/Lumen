@@ -57,6 +57,13 @@
       "when": 1793547843714,
       "tag": "0007_research",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793560322283,
+      "tag": "0008_images",
+      "breakpoints": true
     }
   ]
 }
