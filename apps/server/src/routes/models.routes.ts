@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { LumenError, userPreferencesSchema } from '@lumen/shared';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Container } from '../container.js';
 import { route } from '../http/route.js';
 import { users } from '../db/schema/index.js';
@@ -27,9 +27,13 @@ export function modelRoutes(app: FastifyInstance, c: Container) {
     auth: 'user',
     body: userPreferencesSchema,
     handler: async ({ auth, body }) => {
-      const merged = userPreferencesSchema.parse({ ...(auth.user.preferences ?? {}), ...body });
-      await c.db.update(users).set({ preferences: merged }).where(eq(users.id, auth.user.id));
-      return merged;
+      // Atomic merge in SQL: concurrent PATCHes touching different keys must not overwrite each other.
+      const [row] = await c.db
+        .update(users)
+        .set({ preferences: sql`${users.preferences} || ${JSON.stringify(body)}::jsonb` })
+        .where(eq(users.id, auth.user.id))
+        .returning({ preferences: users.preferences });
+      return userPreferencesSchema.parse(row?.preferences ?? {});
     },
   });
 

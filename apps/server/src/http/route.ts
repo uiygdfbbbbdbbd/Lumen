@@ -109,8 +109,9 @@ export function route<B = undefined, Q = undefined, P = undefined, R extends Aut
       if (spec.rateLimit) {
         const rl = spec.rateLimit;
         const subject = rl.by === 'user' && req.auth ? `u:${req.auth.user.id}` : `ip:${req.ip}`;
-        const res = await c.rateLimiter.hit(`${rl.name}:${subject}`, rl.limit, rl.windowMs);
-        reply.header('x-ratelimit-limit', rl.limit);
+        const limit = rl.limit * c.config.RATE_LIMIT_MULTIPLIER;
+        const res = await c.rateLimiter.hit(`${rl.name}:${subject}`, limit, rl.windowMs);
+        reply.header('x-ratelimit-limit', limit);
         reply.header('x-ratelimit-remaining', res.remaining);
         reply.header('x-ratelimit-reset', Math.ceil(res.resetAt.getTime() / 1000));
         if (!res.allowed) {

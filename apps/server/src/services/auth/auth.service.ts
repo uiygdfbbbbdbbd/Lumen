@@ -32,6 +32,7 @@ export interface AuthDeps {
   breachChecker: BreachChecker | null;
   publicUrl: string;
   log: Logger;
+  rateLimitMultiplier?: number;
   now?: () => Date;
 }
 
@@ -76,7 +77,7 @@ export class AuthService {
 
   async signup(input: SignupInput, meta: SessionMeta & { ip: string }): Promise<AuthResult> {
     const s = await this.d.settings.get('signup');
-    const ipLimit = await this.d.rateLimiter.hit(`signup:ip:${meta.ip}`, s.maxSignupsPerIpPerDay, 24 * 3600_000);
+    const ipLimit = await this.d.rateLimiter.hit(`signup:ip:${meta.ip}`, s.maxSignupsPerIpPerDay * (this.d.rateLimitMultiplier ?? 1), 24 * 3600_000);
     if (!ipLimit.allowed) {
       throw new LumenError('RATE_LIMITED', 'Too many sign-ups from this network today.', { resetAt: ipLimit.resetAt.toISOString() });
     }
@@ -153,7 +154,7 @@ export class AuthService {
   }
 
   async login(input: LoginInput, meta: SessionMeta & { ip: string }): Promise<AuthResult> {
-    const ipRl = await this.d.rateLimiter.hit(`login:ip:${meta.ip}`, 30, 15 * 60_000);
+    const ipRl = await this.d.rateLimiter.hit(`login:ip:${meta.ip}`, 30 * (this.d.rateLimitMultiplier ?? 1), 15 * 60_000);
     if (!ipRl.allowed) throw new LumenError('RATE_LIMITED', 'Too many sign-in attempts. Try again later.', { resetAt: ipRl.resetAt.toISOString() });
     const sec = await this.d.settings.get('security');
     const signup = await this.d.settings.get('signup');

@@ -55,7 +55,7 @@ test('sessions list shows this device and profile edits persist', async ({ page 
   await page.goto('/settings/account');
   await page.getByLabel('Bio').fill('Loves compilers');
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByText('Profile saved')).toBeVisible();
+  await expect(page.getByText('Profile saved').first()).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Bio')).toHaveValue('Loves compilers');
 });

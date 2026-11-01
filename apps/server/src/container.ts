@@ -128,6 +128,7 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     publicUrl: config.PUBLIC_URL,
     log,
     now,
+    rateLimitMultiplier: config.RATE_LIMIT_MULTIPLIER,
   });
   const users = new UserService(db, storage, audit, settings, hasher, config.API_URL, now);
   const providers = new ProviderService(db, box, storage, audit, email, config, log, now);

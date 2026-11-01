@@ -208,6 +208,9 @@ describe('models, visibility, aliases', () => {
     expect(r.json()).toEqual({ defaultModel: 'quick', favoriteModels: ['a'] });
     expect((await user.patch('/api/me/preferences', { thinkingEffort: 'extreme' })).statusCode).toBe(400);
     expect((await user.get('/api/me/preferences')).json().favoriteModels).toEqual(['a']);
+    // Concurrent patches to different keys must both survive.
+    await Promise.all([user.patch('/api/me/preferences', { defaultModel: 'x' }), user.patch('/api/me/preferences', { recentModels: ['y'] }), user.patch('/api/me/preferences', { autoTitle: false })]);
+    expect((await user.get('/api/me/preferences')).json()).toMatchObject({ defaultModel: 'x', recentModels: ['y'], autoTitle: false, favoriteModels: ['a'] });
   });
 });
 

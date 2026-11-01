@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { linkFrom, waitForMail } from '../support/mail.js';
-import { signUp, skipOnboarding, uniqueEmail } from '../support/helpers.js';
+import { ADMIN_EMAIL, signUp, skipOnboarding, uniqueEmail } from '../support/helpers.js';
 
 test.describe.configure({ mode: 'serial' });
 
 test('the first account becomes super admin', async ({ page }) => {
-  await signUp(page, { email: uniqueEmail('admin'), name: 'Instance Admin' });
+  await signUp(page, { email: ADMIN_EMAIL, name: 'Instance Admin' });
   await skipOnboarding(page);
   await page.getByRole('button', { name: /Instance Admin/ }).click();
   await expect(page.getByRole('menuitem', { name: 'Design system' })).toBeVisible();

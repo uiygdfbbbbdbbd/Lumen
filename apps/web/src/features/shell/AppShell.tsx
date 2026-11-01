@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-router';
 import { Avatar, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, IconButton, cn } from '@lumen/ui';
-import { Home, LogOut, Menu, Palette, Settings, Shield, X } from 'lucide-react';
+import { Home, LogOut, Menu, Palette, Settings, Shield, ShieldCheck, X } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { hasPermission, useLogout, useMe, useSetMe, type MeResponse } from '../../lib/auth.js';
 import { Logo } from '../auth/AuthLayout.js';
@@ -30,6 +30,7 @@ export function AppShell() {
     { to: '/', label: 'Home', icon: <Home size={18} />, tour: 'home' },
     { to: '/settings/appearance', label: 'Themes', icon: <Palette size={18} />, tour: 'themes' },
     { to: '/settings/account', label: 'Settings', icon: <Settings size={18} />, tour: 'settings' },
+    ...(hasPermission(me, 'admin:access') ? [{ to: '/admin', label: 'Admin', icon: <ShieldCheck size={18} /> }] : []),
   ];
 
   const sidebar = (

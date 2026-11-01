@@ -75,3 +75,35 @@ No GeoIP database ships with Lumen. When `TRUST_PROXY=true`, country codes are r
 
 ## D16. MIT license
 Permissive, widely understood, compatible with all dependencies used.
+
+## D17. One OpenAI-compatible adapter for many providers
+Mistral, OpenRouter, vLLM, LM Studio and custom endpoints use the OpenAI Chat Completions adapter (with
+`max_tokens` instead of `max_completion_tokens`). Anthropic, Gemini, Ollama (native) and Cohere v2 have their own
+adapters. All emit one normalized stream (`text-delta`, `reasoning-delta`, `tool-call*`, `usage`, `finish`).
+
+## D18. Token counting is an estimate; billing uses provider-reported usage
+Shipping BPE vocabularies would add 1–2 MB per model family. `estimateTokens()` is a calibrated heuristic used
+only for context meters and pre-flight checks. Quotas and cost accounting use the usage numbers providers return.
+
+## D19. A built-in mock provider
+`@lumen/llm/mock` speaks all five wire formats with deterministic, scriptable behavior. It powers adapter tests,
+server integration tests and E2E tests, and lets self-hosters try Lumen without any API key
+(`pnpm --filter @lumen/llm mock`).
+
+## D20. Provider keys: many per provider, chosen by weight
+Keys live in `provider_keys` (encrypted, bound to the provider with associated data). Selection is weighted random
+among enabled keys that are not cooling down (after 429/auth errors) and are under their monthly spend cap.
+A per-provider circuit breaker (5 failures, 30 s cooldown, single half-open trial) fails fast during outages.
+
+## D21. PATCH schemas never carry defaults
+`.partial()` on Zod objects keeps `.default()` values, which silently reset omitted fields. All PATCH endpoints
+use `patchOf(schema)`, which strips defaults and rejects unknown keys. User preferences are merged atomically in
+SQL (`jsonb ||`) so concurrent updates to different keys don't overwrite each other.
+
+## D22. Model favorites in the picker use Alt+F
+A listbox may only contain options, so the favorite star can't be a nested button. Mouse users click the star;
+keyboard and screen-reader users press Alt+F on the active option (shown in the picker's hint line).
+
+## D23. RATE_LIMIT_MULTIPLIER for test environments
+All rate limits scale by this env value (default 1). E2E and load tests raise it so a suite of sign-ups from one
+IP is not throttled, without weakening production defaults.

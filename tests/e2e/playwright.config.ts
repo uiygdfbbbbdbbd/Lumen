@@ -16,6 +16,8 @@ const serverEnv = {
   SMTP_PORT: '1025',
   STORAGE_FS_ROOT: '/tmp/lumen-e2e-storage',
   LOG_LEVEL: 'warn',
+  ALLOW_PRIVATE_PROVIDER_URLS: 'true',
+  RATE_LIMIT_MULTIPLIER: '20',
 };
 
 export default defineConfig({
@@ -43,6 +45,12 @@ export default defineConfig({
   ],
   webServer: [
     { command: 'node support/mail-sink.mjs', url: 'http://127.0.0.1:8025/api/v1/messages', reuseExistingServer: true },
+    {
+      command: 'pnpm --filter @lumen/llm exec tsx src/mock/cli.ts',
+      url: 'http://127.0.0.1:4010/v1/models',
+      env: { MOCK_LLM_PORT: '4010', MOCK_LLM_API_KEY: 'sk-e2e-mock-key-0001' },
+      reuseExistingServer: true,
+    },
     {
       command: 'bash support/start-api.sh',
       url: `http://localhost:${API_PORT}/api/health`,

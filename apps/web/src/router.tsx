@@ -16,6 +16,10 @@ import { AppearanceSettings } from './features/settings/AppearanceSettings.js';
 import { UsageSettings } from './features/settings/UsageSettings.js';
 import { PrivacySettings } from './features/settings/PrivacySettings.js';
 import { DesignSystemPage } from './features/design-system/DesignSystemPage.js';
+import { ChatSettings } from './features/settings/ChatSettings.js';
+import { AdminLayout } from './features/admin/AdminLayout.js';
+import { ProvidersPage } from './features/admin/ProvidersPage.js';
+import { ModelsPage } from './features/admin/ModelsPage.js';
 
 interface Ctx {
   queryClient: QueryClient;
@@ -115,15 +119,28 @@ const settingsIndex = createRoute({ getParentRoute: () => settingsRoute, path: '
 const accountRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/account', component: ProfileSettings });
 const securityRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/security', component: SecuritySettings });
 const appearanceRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/appearance', component: AppearanceSettings });
+const chatSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/chat', component: ChatSettings });
 const usageRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/usage', component: UsageSettings });
 const privacyRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/privacy', component: PrivacySettings });
 const designRoute = createRoute({ getParentRoute: () => shell, path: '/design-system', component: DesignSystemPage });
+const adminRoute = createRoute({
+  getParentRoute: () => shell,
+  path: '/admin',
+  beforeLoad: ({ context }) => {
+    const me = (context as unknown as { me: { permissions: string[] } }).me;
+    if (!me.permissions.includes('admin:access')) throw redirect({ to: '/' });
+  },
+  component: AdminLayout,
+});
+const adminIndex = createRoute({ getParentRoute: () => adminRoute, path: '/', beforeLoad: () => { throw redirect({ to: '/admin/providers' }); } });
+const adminProviders = createRoute({ getParentRoute: () => adminRoute, path: '/providers', component: ProvidersPage });
+const adminModels = createRoute({ getParentRoute: () => adminRoute, path: '/models', component: ModelsPage });
 
 const routeTree = root.addChildren([
   guest.addChildren([loginRoute, signupRoute, forgotRoute, resetRoute, verifyRoute, magicRoute, emailChangeRoute]),
   authed.addChildren([
     onboardingRoute,
-    shell.addChildren([homeRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, usageRoute, privacyRoute]), designRoute]),
+    shell.addChildren([homeRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels])]),
   ]),
 ]);
 

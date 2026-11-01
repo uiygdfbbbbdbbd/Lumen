@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const PASSWORD = 'correct horse battery staple 42!';
+/** The first account created in a run (spec 01) becomes super admin. */
+export const ADMIN_EMAIL = 'admin@lumen-e2e.example.com';
 export const AVATAR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'avatar.png');
 
 export function uniqueEmail(tag: string) {
