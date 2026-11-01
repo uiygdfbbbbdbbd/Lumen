@@ -86,7 +86,7 @@ export function useChat(conversationId: string | undefined) {
   );
 
   const send = useCallback(
-    async (content: string, opts: { modelId?: string; compareModelIds?: string[]; incognito?: boolean; parentId?: string | null } = {}) => {
+    async (content: string, opts: { modelId?: string; compareModelIds?: string[]; incognito?: boolean; parentId?: string | null; attachments?: string[]; projectId?: string | null } = {}) => {
       let convId = conversationId;
       if (!navigator.onLine) {
         if (!convId) throw new LumenError('PROVIDER_UNAVAILABLE', 'You are offline.');
@@ -97,14 +97,14 @@ export function useChat(conversationId: string | undefined) {
         return;
       }
       if (!convId) {
-        const c = await createConversation({ modelId: opts.compareModelIds ? null : (opts.modelId ?? null), incognito: opts.incognito ?? false });
+        const c = await createConversation({ modelId: opts.compareModelIds ? null : (opts.modelId ?? null), incognito: opts.incognito ?? false, projectId: opts.projectId ?? null });
         convId = c.id;
-        const r = await sendMessage(convId, { content, ...(opts.modelId && !opts.compareModelIds ? { modelId: opts.modelId } : {}), ...(opts.compareModelIds ? { compareModelIds: opts.compareModelIds } : {}) });
+        const r = await sendMessage(convId, { content, ...(opts.modelId && !opts.compareModelIds ? { modelId: opts.modelId } : {}), ...(opts.compareModelIds ? { compareModelIds: opts.compareModelIds } : {}), ...(opts.attachments ? { attachments: opts.attachments } : {}) });
         await navigate({ to: '/c/$conversationId', params: { conversationId: convId } });
         await afterSend(convId, r);
         return;
       }
-      const r = await sendMessage(convId, { content, ...(opts.parentId !== undefined ? { parentId: opts.parentId } : {}), ...(opts.modelId && !opts.compareModelIds ? { modelId: opts.modelId } : {}), ...(opts.compareModelIds ? { compareModelIds: opts.compareModelIds } : {}) });
+      const r = await sendMessage(convId, { content, ...(opts.parentId !== undefined ? { parentId: opts.parentId } : {}), ...(opts.modelId && !opts.compareModelIds ? { modelId: opts.modelId } : {}), ...(opts.compareModelIds ? { compareModelIds: opts.compareModelIds } : {}), ...(opts.attachments ? { attachments: opts.attachments } : {}) });
       await afterSend(convId, r);
     },
     [afterSend, conversationId, navigate],

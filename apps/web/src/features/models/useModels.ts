@@ -14,7 +14,13 @@ export function useUpdatePreferences() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (patch: Partial<UserPreferences>) => api<UserPreferences>('/api/me/preferences', { method: 'PATCH', body: patch }),
-    onSuccess: (data) => qc.setQueryData(['preferences'], data),
+    // Refetch rather than trusting each response: with several PATCHes in flight, responses can arrive
+    // out of order and an older snapshot would overwrite a newer one.
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: ['preferences'] });
+      qc.setQueryData<UserPreferences>(['preferences'], (old) => ({ ...(old ?? {}), ...patch }));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['preferences'] }),
   });
 }
 

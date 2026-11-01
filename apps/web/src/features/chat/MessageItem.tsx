@@ -2,6 +2,10 @@ import { memo, useState } from 'react';
 import { Avatar, Banner, Button, IconButton, Textarea, Tooltip, cn, toast } from '@lumen/ui';
 import { Brain, ChevronDown, ChevronLeft, ChevronRight, Copy, Pencil, Quote, RefreshCw, Square, ThumbsDown, ThumbsUp, Trash2, Volume2 } from 'lucide-react';
 import { Markdown } from './Markdown.js';
+import { SourcesList } from './Citations.js';
+import { FileIcon } from '../files/FileIcon.js';
+import { fileUrl } from '../files/upload.js';
+import type { Citation } from './store.js';
 import { ToolCard } from './ToolCard.js';
 import type { LiveStream } from './store.js';
 import type { ChatMessage } from './types.js';
@@ -61,6 +65,8 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
             return { id: String(p.id), name: String(p.name), arguments: p.arguments as Record<string, unknown>, result: r ? { content: r.content, isError: r.isError } : undefined };
           });
   const error = live?.error ?? (m.status === 'error' ? m.error : null);
+  const citations = (live && m.status === 'streaming' ? live.citations : (m.parts.filter((p) => p.type === 'citation') as unknown as Citation[])) ?? [];
+  const attachments = m.parts.filter((p) => p.type === 'attachment') as unknown as { fileId: string; name: string; kind: string }[];
 
   if (m.role === 'user') {
     return (
@@ -82,7 +88,22 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
               </div>
             </form>
           ) : (
-            <div className="whitespace-pre-wrap rounded-lg bg-accent-soft px-4 py-2.5 text-fg">{m.content}</div>
+            <>
+              {attachments.length ? (
+                <ul aria-label="Attachments" className="flex flex-wrap justify-end gap-2">
+                  {attachments.map((a) => (
+                    <li key={a.fileId}>
+                      {a.kind === 'image' ? (
+                        <a href={fileUrl(a.fileId)} target="_blank" rel="noreferrer"><img src={fileUrl(a.fileId)} alt={a.name} className="max-h-40 max-w-60 rounded-md border border-border object-cover" loading="lazy" /></a>
+                      ) : (
+                        <a href={fileUrl(a.fileId, true)} className="flex items-center gap-2 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-fg hover:bg-hover"><FileIcon kind={a.kind} /> {a.name}</a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {m.content ? <div className="whitespace-pre-wrap rounded-lg bg-accent-soft px-4 py-2.5 text-fg">{m.content}</div> : null}
+            </>
           )}
           <div className="flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
             <BranchNav siblings={siblings} onSwitch={a.onSwitch} />
@@ -101,7 +122,8 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
       {live?.compacted ? <p className="mb-2 text-xs text-fg-2">Earlier messages were summarized to fit the model’s context window.</p> : null}
       {reasoning ? <Reasoning text={reasoning} streaming={streaming && !text} /> : null}
       {tools.map((t) => <ToolCard key={t.id} name={t.name} args={t.arguments} result={t.result} />)}
-      {text ? <Markdown text={text} /> : streaming ? <span className="inline-flex gap-1 py-2" aria-label="Generating"><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3" /><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3 [animation-delay:150ms]" /><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3 [animation-delay:300ms]" /></span> : null}
+      {text ? <Markdown text={text} citations={citations} /> : streaming ? <span className="inline-flex gap-1 py-2" aria-label="Generating"><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3" /><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3 [animation-delay:150ms]" /><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3 [animation-delay:300ms]" /></span> : null}
+      {!streaming ? <SourcesList citations={citations} /> : null}
       {live?.reconnecting ? <p className="mt-1 text-xs text-fg-2" role="status">Reconnecting… your response is still being generated.</p> : null}
       {m.status === 'cancelled' || live?.status === 'cancelled' ? <p className="mt-1 text-xs text-fg-2">Stopped.</p> : null}
       {error ? (

@@ -27,11 +27,11 @@ export interface SendResult {
   assistantMessages: ChatMessage[];
 }
 
-export function createConversation(body: { title?: string; modelId?: string | null; incognito?: boolean; instructions?: string; settings?: Record<string, unknown> }) {
+export function createConversation(body: { title?: string; modelId?: string | null; incognito?: boolean; instructions?: string; settings?: Record<string, unknown>; projectId?: string | null }) {
   return api<ConversationSummary>('/api/conversations', { method: 'POST', body });
 }
 
-export function sendMessage(conversationId: string, body: { content: string; parentId?: string | null; modelId?: string; compareModelIds?: string[]; thinkingEffort?: string }) {
+export function sendMessage(conversationId: string, body: { content: string; parentId?: string | null; modelId?: string; compareModelIds?: string[]; thinkingEffort?: string; attachments?: string[] }) {
   return api<SendResult>(`/api/conversations/${conversationId}/messages`, { method: 'POST', body });
 }
 

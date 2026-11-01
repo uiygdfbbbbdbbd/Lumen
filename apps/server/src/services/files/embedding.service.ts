@@ -21,11 +21,7 @@ export class EmbeddingService {
   async model(): Promise<ResolvedModel | null> {
     const { embeddingModelId } = await this.settings.get('rag');
     if (!embeddingModelId) return null;
-    try {
-      return await this.catalog.resolve(embeddingModelId, { role: 'super_admin', emailVerifiedAt: new Date(), betaTester: true });
-    } catch {
-      return null;
-    }
+    return this.catalog.resolveSystem(embeddingModelId);
   }
 
   async embedMany(texts: string[], userId: string | null): Promise<{ vectors: number[][]; model: string } | null> {

@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { BUILTIN_STYLES } from '@lumen/shared';
 import { Badge, Banner, Button, Dialog, DialogContent, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, Field, IconButton, Select, Skeleton, Textarea, Tooltip, toast } from '@lumen/ui';
 import { Archive, Copy, EyeOff, MoreHorizontal, NotebookPen, Star, Trash2 } from 'lucide-react';
@@ -34,6 +34,7 @@ function ContextMeter({ used, total }: { used: number; total: number }) {
 export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: boolean }) {
   const params = useParams({ strict: false }) as { conversationId?: string };
   const conversationId = params.conversationId;
+  const search = useSearch({ strict: false }) as { project?: string; prompt?: string };
   const navigate = useNavigate();
   const { data: me } = useMe();
   const { data: prefs } = usePreferences();
@@ -49,6 +50,11 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
   const styles = useQuery({ queryKey: ['styles'], queryFn: () => api<{ builtin: { id: string; name: string }[]; custom: { id: string; name: string }[] }>('/api/styles') });
 
   const conv = chat.tree.data?.conversation;
+  const projectId = conv?.projectId ?? (!conversationId ? (search.project ?? null) : null);
+  const project = useQuery({ queryKey: ['project-name', projectId], queryFn: () => api<{ project: { id: string; name: string; color: string } }>(`/api/projects/${projectId}`).then((r) => r.project), enabled: Boolean(projectId), staleTime: 60_000 });
+  useEffect(() => {
+    if (search.prompt && !conversationId) composer.current?.insert(search.prompt);
+  }, [search.prompt, conversationId]);
   const modelId = modelOverride ?? conv?.modelId ?? prefs?.defaultModel ?? 'auto';
   const streamingIds = chat.path.filter((m) => m.status === 'streaming' && streams[m.id]?.status !== 'done').map((m) => m.id);
   const compactedThrough = useMemo(() => new Set((chat.tree.data?.compactions ?? []).map((c) => c.throughMessageId)), [chat.tree.data?.compactions]);
@@ -91,6 +97,7 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
             {conv ? <button type="button" onClick={() => setTitleEditing(true)} className="max-w-full truncate rounded-sm px-1 hover:bg-hover" title="Rename">{conv.title}</button> : incognito ? 'Temporary chat' : 'New chat'}
           </h1>
         )}
+        {project.data ? <Link to="/projects/$projectId" params={{ projectId: project.data.id }} className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-fg-2 hover:bg-hover"><span className="h-2 w-2 rounded-full" style={{ background: project.data.color }} aria-hidden="true" />{project.data.name}</Link> : null}
         {conv?.incognito || (!conv && incognito) ? <Badge tone="warning"><EyeOff size={10} aria-hidden="true" /> Temporary — not saved to history</Badge> : null}
         {usageNumbers ? <ContextMeter used={usageNumbers.contextTokens} total={usageNumbers.contextWindow} /> : null}
         {conv ? (
@@ -154,6 +161,7 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
         <Composer
           ref={composer}
           conversationId={conversationId}
+          projectId={projectId}
           modelId={modelId}
           onModelChange={(id) => {
             setModelOverride(id);
@@ -165,7 +173,7 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
           onStop={() => streamingIds.forEach((id) => void chat.cancel(id))}
           onSend={async (text, opts) => {
             try {
-              await chat.send(text, { ...(modelId !== 'auto' ? { modelId } : {}), ...opts, incognito });
+              await chat.send(text, { ...(modelId !== 'auto' ? { modelId } : {}), ...opts, incognito, projectId });
             } catch (e) {
               toast.error('Message not sent', errorMessage(e));
               throw e;

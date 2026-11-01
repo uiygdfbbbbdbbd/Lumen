@@ -1,4 +1,6 @@
-import { lazy, memo, Suspense, useState, type ReactNode } from 'react';
+import { lazy, memo, Suspense, useMemo, useState, type ReactNode } from 'react';
+import { CitationChip, linkCitations } from './Citations.js';
+import type { Citation } from './store.js';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -117,11 +119,26 @@ const components: Components = {
 };
 
 /** Safe by construction: raw HTML in model output is never rendered (no rehype-raw). */
-export const Markdown = memo(function Markdown({ text }: { text: string }) {
+export const Markdown = memo(function Markdown({ text, citations = [] }: { text: string; citations?: Citation[] }) {
+  const comps = useMemo<Components>(
+    () =>
+      citations.length
+        ? {
+            ...components,
+            a: (props) => {
+              const m = /^#cite-(\d+)$/.exec(props.href ?? '');
+              const c = m ? citations.find((x) => x.n === Number(m[1])) : undefined;
+              if (c) return <CitationChip c={c} />;
+              return components.a ? (components.a as (p: typeof props) => ReactNode)(props) : <a {...props} />;
+            },
+          }
+        : components,
+    [citations],
+  );
   return (
     <div className="lm-prose">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: 'ignore' }], [rehypeHighlight, { detect: true, ignoreMissing: true }]]} components={components}>
-        {text}
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: 'ignore' }], [rehypeHighlight, { detect: true, ignoreMissing: true }]]} components={comps}>
+        {linkCitations(text, citations.length)}
       </ReactMarkdown>
     </div>
   );

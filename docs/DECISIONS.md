@@ -132,3 +132,22 @@ When a branch no longer fits the model's context, older turns are summarized by 
 ## D28. Remote images in model output are not auto-loaded
 Rendered Markdown shows remote images as labeled links. Auto-loading them would let prompt-injected content
 exfiltrate data through image URLs. Raw HTML in model output is never rendered.
+
+## D29. Files are classified by bytes, not by name
+Uploads must have an allowlisted extension *and* content that matches it (magic bytes via `file-type`, or valid
+UTF-8 for text formats). Mismatches (e.g. a PDF named `.png`, a PNG named `.txt`) are rejected, which blocks
+polyglot and renamed-executable tricks. Office/EPUB files are zips and are validated during extraction.
+
+## D30. Hybrid retrieval with reciprocal rank fusion
+Each question runs a strict full-text query, a loose OR-of-terms query (stopwords removed) and, when an
+embedding model is configured, a pgvector cosine search. Lists are fused with RRF (k=60). Without an embedding
+model, retrieval degrades gracefully to lexical search.
+
+## D31. Inline small attachments, retrieve from large ones
+If the attachments' total extracted text fits `rag.inlineTokenLimit` (default 8k tokens) it's given to the model
+in full; otherwise top-K excerpts are injected with numbered citations and a `file_search` tool is offered.
+Users can force either mode per conversation via `PATCH /api/conversations/:id/files`.
+
+## D32. Embedding models are resolved as system models
+The admin picks an embedding model in settings. It is used even if it is hidden from the chat model picker
+(`enabled = false`), so embedding-only models never show up as chat choices.

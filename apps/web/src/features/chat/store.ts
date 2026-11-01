@@ -18,9 +18,19 @@ export interface LiveStream {
   compacted: boolean;
   reconnecting: boolean;
   usage: { contextTokens: number; contextWindow: number } | null;
+  citations: Citation[];
 }
 
-const empty = (): LiveStream => ({ text: '', reasoning: '', tools: [], status: 'streaming', error: null, fallback: null, compacted: false, reconnecting: false, usage: null });
+export interface Citation {
+  n: number;
+  chunkId: string;
+  fileId: string;
+  fileName: string;
+  location: { page?: number; section?: string };
+  snippet: string;
+}
+
+const empty = (): LiveStream => ({ text: '', reasoning: '', tools: [], status: 'streaming', error: null, fallback: null, compacted: false, reconnecting: false, usage: null, citations: [] });
 
 interface Store {
   streams: Record<string, LiveStream>;
@@ -43,6 +53,8 @@ export function reduce(s: LiveStream, e: ChatStreamEvent): LiveStream {
       return { ...s, fallback: `${e.from} was unavailable, switched to ${e.to}.` };
     case 'compacted':
       return { ...s, compacted: true };
+    case 'citations':
+      return { ...s, citations: e.items };
     case 'usage':
       return { ...s, usage: { contextTokens: e.contextTokens, contextWindow: e.contextWindow } };
     case 'done':

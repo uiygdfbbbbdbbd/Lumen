@@ -1,7 +1,10 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { estimateTokens } from '@lumen/llm';
 import { Badge, IconButton, Popover, PopoverContent, PopoverTrigger, cn, toast } from '@lumen/ui';
-import { ArrowUp, Columns2, Mic, MicOff, Square, X } from 'lucide-react';
+import { ArrowUp, Columns2, Loader2, Mic, MicOff, Paperclip, RotateCw, Square, X } from 'lucide-react';
+import { FileIcon } from '../files/FileIcon.js';
+import { useAttachments } from '../files/useAttachments.js';
+import { formatBytes } from '../../lib/i18n.js';
 import { ModelSelector } from '../models/ModelSelector.js';
 import { useModels } from '../models/useModels.js';
 
@@ -22,7 +25,8 @@ interface Props {
   onModelChange: (id: string) => void;
   streaming: boolean;
   sendWithEnter: boolean;
-  onSend: (text: string, opts: { compareModelIds?: string[] }) => Promise<void>;
+  onSend: (text: string, opts: { compareModelIds?: string[]; attachments?: string[] }) => Promise<void>;
+  projectId?: string | null;
   onStop: () => void;
   slashCommands: SlashCommand[];
   disabledReason?: string | null;
@@ -42,6 +46,10 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
   const [listening, setListening] = useState(false);
   const recognition = useRef<InstanceType<SpeechCtor> | null>(null);
   const ta = useRef<HTMLTextAreaElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const att = useAttachments(p.projectId);
+  const [sendWhenReady, setSendWhenReady] = useState(false);
   const { data: models = [] } = useModels();
 
   useImperativeHandle(ref, () => ({
@@ -78,12 +86,26 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
     }
   }, [p.streaming, queued, p]);
 
+  useEffect(() => {
+    if (sendWhenReady && !att.busy) {
+      setSendWhenReady(false);
+      if (!att.hasErrors) void submit().catch(() => undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sendWhenReady, att.busy]);
+
   const slashMatches = useMemo(() => (text.startsWith('/') && !text.includes(' ') ? p.slashCommands.filter((c) => c.name.startsWith(text.slice(1).toLowerCase())) : []), [text, p.slashCommands]);
   const tokens = useMemo(() => estimateTokens(text), [text]);
 
   async function submit() {
     const content = text.trim();
-    if (!content || p.disabledReason) return;
+    if ((!content && !att.items.length) || p.disabledReason) return;
+    if (att.busy) {
+      // Send automatically as soon as the attachments finish processing.
+      setSendWhenReady(true);
+      return;
+    }
+    setSendWhenReady(false);
     if (slashMatches.length === 1 && content === `/${slashMatches[0]!.name}`) {
       slashMatches[0]!.run();
       setText('');
@@ -100,9 +122,14 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
     }
     setText('');
     localStorage.removeItem(draftKey(p.conversationId));
+    const attachments = att.readyIds;
     try {
-      await p.onSend(content, compare.length >= 1 ? { compareModelIds: [...new Set([p.modelId, ...compare].filter((x): x is string => Boolean(x) && x !== 'auto'))] } : {});
+      await p.onSend(content, {
+        ...(compare.length >= 1 ? { compareModelIds: [...new Set([p.modelId, ...compare].filter((x): x is string => Boolean(x) && x !== 'auto'))] } : {}),
+        ...(attachments.length ? { attachments } : {}),
+      });
       setCompare([]);
+      att.clear();
     } catch (e) {
       setText(content);
       throw e;
@@ -157,7 +184,40 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
   }
 
   return (
-    <div className="relative rounded-lg border border-border bg-elevated shadow-sm focus-within:border-accent">
+    <div
+      className={cn('relative rounded-lg border bg-elevated shadow-sm focus-within:border-accent', dragging ? 'border-accent ring-2 ring-accent' : 'border-border')}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          setDragging(true);
+        }
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        if (e.dataTransfer.files.length) att.add([...e.dataTransfer.files]);
+      }}
+    >
+      {dragging ? <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-accent-soft/80 text-sm font-medium text-fg">Drop files to attach</div> : null}
+      {att.items.length ? (
+        <ul aria-label="Attachments" className="flex flex-wrap gap-2 border-b border-border px-3 py-2">
+          {att.items.map((a) => (
+            <li key={a.localId} className="flex max-w-64 items-center gap-2 rounded-md border border-border bg-surface px-2 py-1 text-xs">
+              {a.previewUrl ? <img src={a.previewUrl} alt="" className="h-8 w-8 rounded-sm object-cover" /> : <FileIcon kind={a.kind} />}
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-fg">{a.name}</span>
+                <span className={cn('block', ['error', 'failed', 'quarantined'].includes(a.status) ? 'text-danger' : 'text-fg-2')} title={a.error ?? undefined}>
+                  {a.status === 'uploading' ? `Uploading ${Math.round(a.progress * 100)}%` : a.status === 'ready' ? formatBytes(a.size) : a.status === 'queued' || a.status === 'processing' ? 'Processing…' : (a.error ?? 'Failed')}
+                </span>
+              </span>
+              {a.status === 'uploading' || a.status === 'queued' || a.status === 'processing' ? <Loader2 size={12} className="animate-spin text-fg-2" aria-hidden="true" /> : null}
+              {a.status === 'error' || a.status === 'failed' ? <button type="button" aria-label={`Retry ${a.name}`} onClick={() => att.retry(a.localId)}><RotateCw size={12} aria-hidden="true" /></button> : null}
+              <button type="button" aria-label={`Remove ${a.name}`} onClick={() => att.remove(a.localId)}><X size={12} aria-hidden="true" /></button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {slashMatches.length ? (
         <ul role="listbox" aria-label="Commands" className="absolute bottom-full left-0 mb-2 w-72 rounded-md border border-border bg-elevated p-1 shadow-md">
           {slashMatches.map((c) => (
@@ -179,6 +239,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
         </div>
       ) : null}
       {queued ? <div className="border-b border-border px-3 py-1.5 text-xs text-fg-2">Queued: “{queued.slice(0, 80)}”</div> : null}
+      {sendWhenReady ? <div role="status" className="border-b border-border px-3 py-1.5 text-xs text-fg-2">Will send when your files finish processing…</div> : null}
       <textarea
         ref={ta}
         value={text}
@@ -187,6 +248,13 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
           setHistoryIdx(-1);
         }}
         onKeyDown={onKeyDown}
+        onPaste={(e) => {
+          const files = [...e.clipboardData.files];
+          if (files.length) {
+            e.preventDefault();
+            att.add(files);
+          }
+        }}
         rows={1}
         disabled={Boolean(p.disabledReason)}
         placeholder={p.disabledReason ?? p.placeholder ?? 'Message Lumen…  (type / for commands)'}
@@ -194,6 +262,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
         className="block max-h-[40vh] min-h-12 w-full resize-none bg-transparent px-4 pt-3 text-fg outline-none placeholder:text-fg-3 disabled:cursor-not-allowed"
       />
       <div className="flex items-center gap-1 px-2 pb-2">
+        <IconButton size="icon" label="Attach files" icon={<Paperclip size={18} />} onClick={() => fileInput.current?.click()} />
+        <input ref={fileInput} type="file" multiple className="sr-only" aria-label="Choose files to attach" onChange={(e) => { if (e.target.files?.length) att.add([...e.target.files]); e.target.value = ''; }} />
         <ModelSelector value={p.modelId} onChange={p.onModelChange} allowAuto className="h-8 border-0 bg-transparent" />
         <Popover>
           <PopoverTrigger asChild>
@@ -220,7 +290,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
         {p.streaming && !text ? (
           <IconButton size="icon" variant="secondary" label="Stop generating" icon={<Square size={16} />} onClick={p.onStop} />
         ) : (
-          <IconButton size="icon" variant="primary" label={p.streaming ? 'Queue message' : 'Send message'} icon={<ArrowUp size={18} />} disabled={!text.trim() || Boolean(p.disabledReason)} onClick={() => void submit().catch(() => undefined)} />
+          <IconButton size="icon" variant="primary" label={p.streaming ? 'Queue message' : 'Send message'} icon={<ArrowUp size={18} />} disabled={(!text.trim() && !att.items.length) || Boolean(p.disabledReason)} onClick={() => void submit().catch(() => undefined)} />
         )}
       </div>
     </div>

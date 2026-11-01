@@ -1,5 +1,6 @@
 export interface ConversationSummary {
   id: string;
+  projectId: string | null;
   title: string;
   modelId: string | null;
   pinned: boolean;

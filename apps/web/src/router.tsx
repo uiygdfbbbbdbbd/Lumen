@@ -20,6 +20,7 @@ import { ShortcutSettings } from './features/settings/ShortcutSettings.js';
 import { AdminLayout } from './features/admin/AdminLayout.js';
 import { ProvidersPage } from './features/admin/ProvidersPage.js';
 import { ModelsPage } from './features/admin/ModelsPage.js';
+import { RagSettingsPage } from './features/admin/RagSettingsPage.js';
 
 interface Ctx {
   queryClient: QueryClient;
@@ -113,12 +114,20 @@ const ChatPageLazy = lazyRouteComponent(() => import('./features/chat/ChatPage.j
 const homeRoute = createRoute({
   getParentRoute: () => shell,
   path: '/',
-  validateSearch: (s: Record<string, unknown>): { tour?: '1' } => (s.tour === '1' ? { tour: '1' } : {}),
+  validateSearch: (s: Record<string, unknown>): { tour?: '1'; project?: string; prompt?: string } => ({
+    ...(s.tour === '1' ? { tour: '1' as const } : {}),
+    ...(typeof s.project === 'string' && /^[0-9a-f-]{36}$/.test(s.project) ? { project: s.project } : {}),
+    ...(typeof s.prompt === 'string' ? { prompt: s.prompt.slice(0, 4000) } : {}),
+  }),
   component: ChatPageLazy,
 });
 const chatRoute = createRoute({ getParentRoute: () => shell, path: '/c/$conversationId', component: ChatPageLazy });
 const TemporaryChat = lazyRouteComponent(() => import('./features/chat/TemporaryChat.js'), 'TemporaryChat');
 const temporaryRoute = createRoute({ getParentRoute: () => shell, path: '/temporary', component: TemporaryChat });
+const FilesPageLazy = lazyRouteComponent(() => import('./features/files/FilesRoute.js'), 'FilesRoute');
+const filesRoute = createRoute({ getParentRoute: () => shell, path: '/files', component: FilesPageLazy });
+const projectsRoute = createRoute({ getParentRoute: () => shell, path: '/projects', component: lazyRouteComponent(() => import('./features/projects/ProjectsPage.js'), 'ProjectsPage') });
+const projectRoute = createRoute({ getParentRoute: () => shell, path: '/projects/$projectId', component: lazyRouteComponent(() => import('./features/projects/ProjectPage.js'), 'ProjectPage') });
 const settingsRoute = createRoute({ getParentRoute: () => shell, path: '/settings', component: SettingsLayout });
 const settingsIndex = createRoute({ getParentRoute: () => settingsRoute, path: '/', beforeLoad: () => { throw redirect({ to: '/settings/account' }); } });
 const accountRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/account', component: ProfileSettings });
@@ -141,12 +150,13 @@ const adminRoute = createRoute({
 const adminIndex = createRoute({ getParentRoute: () => adminRoute, path: '/', beforeLoad: () => { throw redirect({ to: '/admin/providers' }); } });
 const adminProviders = createRoute({ getParentRoute: () => adminRoute, path: '/providers', component: ProvidersPage });
 const adminModels = createRoute({ getParentRoute: () => adminRoute, path: '/models', component: ModelsPage });
+const adminRag = createRoute({ getParentRoute: () => adminRoute, path: '/rag', component: RagSettingsPage });
 
 const routeTree = root.addChildren([
   guest.addChildren([loginRoute, signupRoute, forgotRoute, resetRoute, verifyRoute, magicRoute, emailChangeRoute]),
   authed.addChildren([
     onboardingRoute,
-    shell.addChildren([homeRoute, chatRoute, temporaryRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels])]),
+    shell.addChildren([homeRoute, chatRoute, temporaryRoute, filesRoute, projectsRoute, projectRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels, adminRag])]),
   ]),
 ]);
 

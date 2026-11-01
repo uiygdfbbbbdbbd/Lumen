@@ -168,6 +168,18 @@ export class ModelCatalogService {
     return { model: row.m, provider: row.p };
   }
 
+  /** System lookup (embeddings, background jobs): ignores user visibility and the picker's enabled flag. */
+  async resolveSystem(ref: string): Promise<ResolvedModel | null> {
+    let modelId = ref;
+    if (!UUID_RE.test(ref)) {
+      const [a] = await this.db.select().from(modelAliases).where(eq(modelAliases.alias, ref.toLowerCase()));
+      if (!a) return null;
+      modelId = a.modelId;
+    }
+    const [row] = await this.db.select({ m: models, p: providers }).from(models).innerJoin(providers, eq(providers.id, models.providerId)).where(eq(models.id, modelId));
+    return row && row.p.enabled ? { model: row.m, provider: row.p } : null;
+  }
+
   /** Default model: user preference if usable, else admin "recommended", else first available. */
   async defaultFor(viewer: Viewer, preferred?: string): Promise<ResolvedModel | null> {
     if (preferred && preferred !== 'auto') {
