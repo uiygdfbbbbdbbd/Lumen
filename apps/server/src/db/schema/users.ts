@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
-import type { Feature, OnboardingState, TierLimits } from '@lumen/shared';
+import type { Feature, OnboardingState, TierLimits, UserPreferences } from '@lumen/shared';
 import { roleEnum, userStatusEnum } from './enums.js';
 
 export const users = pgTable(
@@ -21,6 +21,9 @@ export const users = pgTable(
     statusReason: text('status_reason'),
     tierId: text('tier_id'),
     overrides: jsonb('overrides').$type<{ features?: Partial<Record<Feature, boolean>>; limits?: Partial<TierLimits> }>(),
+    /** Client preferences that follow the user across devices (default model, favorites, recents...). */
+    preferences: jsonb('preferences').$type<UserPreferences>().notNull().default({}),
+    betaTester: boolean('beta_tester').notNull().default(false),
     onboarding: jsonb('onboarding')
       .$type<OnboardingState>()
       .notNull()

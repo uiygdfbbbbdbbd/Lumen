@@ -27,6 +27,7 @@
     "@fastify/multipart": "^10.1.6",
     "@fastify/websocket": "^11.3.6",
     "@lumen/email-templates": "workspace:*",
+    "@lumen/llm": "workspace:*",
     "@lumen/shared": "workspace:*",
     "@node-rs/argon2": "^2.2.2",
     "@simplewebauthn/server": "^14.0.3",

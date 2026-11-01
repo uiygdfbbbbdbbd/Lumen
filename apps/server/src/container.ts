@@ -20,6 +20,8 @@ import { EntitlementService } from './services/entitlements/entitlements.service
 import { SettingsService } from './services/settings/settings.service.js';
 import { FsStorage, S3Storage, type StorageDriver } from './services/storage/storage.js';
 import { UserService } from './services/users/user.service.js';
+import { ProviderService } from './services/providers/provider.service.js';
+import { ModelCatalogService } from './services/models/catalog.service.js';
 
 export interface ApiKeyAuthenticator {
   authenticate(token: string, ip: string): Promise<AuthContext>;
@@ -59,6 +61,8 @@ export interface Container {
   totp: TotpService;
   auth: AuthService;
   users: UserService;
+  providers: ProviderService;
+  catalog: ModelCatalogService;
   apiKeyAuth: ApiKeyAuthenticator | null;
   now: () => Date;
   close(): Promise<void>;
@@ -126,6 +130,8 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     now,
   });
   const users = new UserService(db, storage, audit, settings, hasher, config.API_URL, now);
+  const providers = new ProviderService(db, box, storage, audit, email, config, log, now);
+  const catalog = new ModelCatalogService(db, audit, config.API_URL);
 
   return {
     config,
@@ -148,6 +154,8 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     totp,
     auth,
     users,
+    providers,
+    catalog,
     apiKeyAuth: null,
     now,
     async close() {

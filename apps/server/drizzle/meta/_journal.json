@@ -15,6 +15,13 @@
       "when": 1793523977335,
       "tag": "0001_extensions_audit_immutable",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793526996125,
+      "tag": "0002_providers_models",
+      "breakpoints": true
     }
   ]
 }

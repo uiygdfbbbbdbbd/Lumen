@@ -50,3 +50,15 @@ export const meSchema = z.object({
   deletionScheduledFor: z.string().nullable(),
 });
 export type Me = z.infer<typeof meSchema>;
+
+export const userPreferencesSchema = z.object({
+  defaultModel: z.string().max(200).optional(),
+  favoriteModels: z.array(z.string().max(200)).max(50).optional(),
+  recentModels: z.array(z.string().max(200)).max(20).optional(),
+  thinkingEffort: z.enum(['off', 'low', 'medium', 'high']).optional(),
+  sendWithEnter: z.boolean().optional(),
+  autoTitle: z.boolean().optional(),
+  showSuggestions: z.boolean().optional(),
+  defaultStyle: z.string().max(64).optional(),
+});
+export type UserPreferences = z.infer<typeof userPreferencesSchema>;

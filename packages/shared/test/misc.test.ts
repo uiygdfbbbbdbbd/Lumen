@@ -80,3 +80,17 @@ describe('schemas', () => {
     expect(profilePatchSchema.safeParse({ locale: 'english' }).success).toBe(false);
   });
 });
+
+describe('patch schemas', () => {
+  it('do not inject defaults for omitted fields and reject unknown keys', async () => {
+    const { providerPatchSchema, modelPatchSchema, providerKeyPatchSchema, patchOf } = await import('../src/index.js');
+    const { z } = await import('zod');
+    expect(providerPatchSchema.parse({ apiKey: 'x' })).toEqual({ apiKey: 'x' });
+    expect(providerPatchSchema.parse({ apiKey: null, headers: null })).toEqual({ apiKey: null, headers: null });
+    expect(providerPatchSchema.safeParse({ headers: { Host: 'x' } }).success).toBe(false);
+    expect(modelPatchSchema.parse({ visibility: 'beta' })).toEqual({ visibility: 'beta' });
+    expect(providerKeyPatchSchema.parse({ weight: 2 })).toEqual({ weight: 2 });
+    expect(modelPatchSchema.safeParse({ bogus: 1 }).success).toBe(false);
+    expect(patchOf(z.object({ a: z.number().default(1).default(2) })).parse({})).toEqual({});
+  });
+});

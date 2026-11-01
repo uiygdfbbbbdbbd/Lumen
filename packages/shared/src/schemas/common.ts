@@ -31,3 +31,17 @@ export const timezoneSchema = z
   }, 'Unknown time zone.');
 export const localeSchema = z.string().regex(/^[a-z]{2,3}(-[A-Z][a-zA-Z]{1,3})?$/, 'Invalid locale.');
 export const isoDateSchema = z.string().datetime();
+
+/**
+ * Turn a create-schema into a PATCH schema: every field optional and *without* defaults.
+ * (`.partial()` keeps `.default()` values, which would silently reset omitted fields on update.)
+ */
+export function patchOf<S extends z.ZodRawShape>(schema: z.ZodObject<S>): z.ZodType<Partial<z.output<z.ZodObject<S>>>> {
+  const shape: Record<string, z.ZodType> = {};
+  for (const [key, field] of Object.entries(schema.shape)) {
+    let inner = field as z.ZodType;
+    while (inner instanceof z.ZodDefault) inner = inner.unwrap() as z.ZodType;
+    shape[key] = inner.optional();
+  }
+  return z.object(shape).strict() as unknown as z.ZodType<Partial<z.output<z.ZodObject<S>>>>;
+}
