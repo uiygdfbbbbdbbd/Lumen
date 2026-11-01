@@ -162,7 +162,7 @@ export async function extract(kind: FileKind, name: string, data: Buffer, limits
     case 'presentation':
       return extractPptx(data, limits);
     case 'spreadsheet':
-      return extensionOf(name) === 'xlsx' ? extractXlsx(data, limits) : { sections: [{ text: data.toString('utf8').replace(/^﻿/, ''), location: {} }] };
+      return extensionOf(name) === 'xlsx' ? extractXlsx(data, limits) : { sections: [{ text: data.toString('utf8').replace(/^\uFEFF/, ''), location: {} }] };
     case 'ebook':
       return extractEpub(data, limits);
     case 'archive':
@@ -174,7 +174,7 @@ export async function extract(kind: FileKind, name: string, data: Buffer, limits
     case 'text':
     case 'code':
     case 'data':
-      return { sections: [{ text: data.toString('utf8').replace(/^﻿/, ''), location: {} }] };
+      return { sections: [{ text: data.toString('utf8').replace(/^\uFEFF/, ''), location: {} }] };
     case 'image': {
       const meta = await sharp(data, { limitInputPixels: 100_000_000 }).metadata();
       // Re-encoding drops EXIF/GPS and anything appended after the image data.
