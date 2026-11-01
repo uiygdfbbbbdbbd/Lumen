@@ -51,7 +51,7 @@ export const conversations = pgTable(
 );
 
 export interface MessagePart {
-  type: 'reasoning' | 'tool_call' | 'tool_result' | 'text_segment' | 'citation' | 'attachment' | 'compaction';
+  type: 'reasoning' | 'tool_call' | 'tool_result' | 'text_segment' | 'citation' | 'attachment' | 'compaction' | 'memory';
   [key: string]: unknown;
 }
 

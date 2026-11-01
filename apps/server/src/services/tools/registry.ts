@@ -8,6 +8,8 @@ export interface ToolContext {
   signal: AbortSignal;
   /** Files/project the model may search with file_search in this turn. */
   fileScope?: { fileIds: string[]; projectId: string | null };
+  /** Project of the conversation (memory scope). */
+  projectId?: string | null;
   /** Assistant message being generated (provenance for artifacts). */
   messageId?: string | null;
   /** Push an event to the live stream (e.g. artifact created). */

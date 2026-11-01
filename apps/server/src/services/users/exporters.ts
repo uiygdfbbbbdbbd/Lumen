@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import { strToU8 } from 'fflate';
 import type { Database } from '../../db/client.js';
-import { artifacts, artifactVersions, conversations, files, messages, projects } from '../../db/schema/index.js';
+import { artifacts, artifactVersions, conversations, files, memories, memorySummaries, messages, projects } from '../../db/schema/index.js';
 import type { StorageDriver } from '../storage/storage.js';
 import type { UserService } from './user.service.js';
 
@@ -43,6 +43,14 @@ export function registerExporters(users: UserService, db: Database, storage: Sto
       out[`${a.id}.json`] = strToU8(JSON.stringify({ ...a, versions }, null, 2));
     }
     return out;
+  });
+  users.registerExporter('memory', async (userId) => {
+    const rows = await db.select().from(memories).where(eq(memories.userId, userId)).orderBy(asc(memories.createdAt));
+    const [summary] = await db.select().from(memorySummaries).where(eq(memorySummaries.userId, userId));
+    return {
+      'memories.json': strToU8(JSON.stringify(rows.map(({ embedding: _e, contentTsv: _t, ...m }) => m), null, 2)),
+      ...(summary?.content ? { 'summary.md': strToU8(summary.content) } : {}),
+    };
   });
   users.registerExporter('files', async (userId) => {
     const rows = await db.select().from(files).where(eq(files.userId, userId));

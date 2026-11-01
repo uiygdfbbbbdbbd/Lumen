@@ -42,6 +42,8 @@ import { ProjectService } from './services/projects/project.service.js';
 import { registerExporters } from './services/users/exporters.js';
 import { ArtifactService } from './services/artifacts/artifact.service.js';
 import { artifactTools } from './services/tools/artifact-tools.js';
+import { conversationSearchTool, memoryTools } from './services/tools/memory-tools.js';
+import { MemoryService } from './services/memory/memory.service.js';
 import type { SsrfOptions } from './lib/ssrf.js';
 
 export interface ApiKeyAuthenticator {
@@ -105,6 +107,7 @@ export interface Container {
   files: FileService;
   projects: ProjectService;
   artifacts: ArtifactService;
+  memory: MemoryService;
   apiKeyAuth: ApiKeyAuthenticator | null;
   now: () => Date;
   close(): Promise<void>;
@@ -190,8 +193,11 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   const tools = new ToolRegistry().register(calculatorTool).register(datetimeTool).register(fileSearchTool(retrieval));
   for (const t of artifactTools(artifactsSvc)) tools.register(t);
   const conversationsSvc = new ConversationService(db, bus, now);
+  const memorySvc = new MemoryService({ db, settings, embeddings, projects, catalog, providers, entitlements, jobs, log, now });
+  for (const t of memoryTools(memorySvc)) tools.register(t);
+  tools.register(conversationSearchTool(conversationsSvc));
   const runner = new GenerationRunner({ db, hub, bus, providers, catalog, entitlements, tools, rateLimiter, log, now });
-  const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now, files: filesSvc, fileContext, projects });
+  const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now, files: filesSvc, fileContext, projects, memory: memorySvc });
   const stylesSvc = new StyleService(db, catalog, providers);
 
   return {
@@ -232,6 +238,7 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     files: filesSvc,
     projects,
     artifacts: artifactsSvc,
+    memory: memorySvc,
     apiKeyAuth: null,
     now,
     async close() {

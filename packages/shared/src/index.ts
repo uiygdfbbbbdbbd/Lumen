@@ -10,3 +10,4 @@ export * from './theme/index.js';
 export * from './schemas/providers.js';
 export * from './schemas/chat.js';
 export * from './artifacts/index.js';
+export * from './schemas/memory.js';

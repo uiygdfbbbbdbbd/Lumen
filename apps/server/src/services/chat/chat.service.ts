@@ -19,6 +19,8 @@ import { pathTo, serializeMessage, type ConversationService } from './conversati
 import type { GenerationRunner } from './generation.js';
 import { buildSystemPrompt, builtinStyle } from './prompt.js';
 import { ARTIFACT_GUIDANCE } from '../tools/artifact-tools.js';
+import { HISTORY_GUIDANCE, MEMORY_GUIDANCE, MEMORY_TOOLS } from '../tools/memory-tools.js';
+import type { MemoryService } from '../memory/memory.service.js';
 
 export const DEFAULT_TOOLS = ['calculator', 'current_datetime', 'create_artifact', 'update_artifact', 'rewrite_artifact'];
 
@@ -38,6 +40,7 @@ export interface ChatDeps {
   files: FileService;
   fileContext: FileContextBuilder;
   projects: ProjectService;
+  memory: MemoryService;
 }
 
 type Thinking = 'off' | 'low' | 'medium' | 'high';
@@ -80,7 +83,7 @@ export class ChatService {
     return lease;
   }
 
-  private async systemPrompt(user: UserRow, conv: ConversationRow, model: ResolvedModel, extra: { title: string; body: string }[] = []): Promise<string> {
+  private async systemPrompt(user: UserRow, conv: ConversationRow, model: ResolvedModel, extra: { title: string; body: string }[] = [], toolGuidance: string[] = []): Promise<string> {
     const branding = await this.d.settings.get('branding');
     const prefs = this.prefs(user);
     const project = conv.projectId ? (await this.d.projects.require(user, conv.projectId, 'viewer').catch(() => null))?.project : null;
@@ -98,8 +101,37 @@ export class ChatService {
       userInstructions: prefs.customInstructions,
       conversationInstructions: conv.instructions,
       styleInstructions: styleText,
-      extraSections: [...(model.model.capabilities.tools ? [{ title: 'Tools', body: ARTIFACT_GUIDANCE }] : []), ...(project?.instructions.trim() ? [{ title: `Project "${project.name}" instructions`, body: project.instructions.trim() }] : []), ...extra],
+      extraSections: [...(model.model.capabilities.tools ? [{ title: 'Tools', body: [ARTIFACT_GUIDANCE, ...toolGuidance].join('\n\n') }] : []), ...(project?.instructions.trim() ? [{ title: `Project "${project.name}" instructions`, body: project.instructions.trim() }] : []), ...extra],
     });
+  }
+
+  /**
+   * Memory for one turn. Temporary chats, paused memory, and chats with memory turned off neither read nor
+   * write it (no memories injected, no memory tools offered).
+   */
+  private async memoryContext(user: UserRow, conv: ConversationRow, query: string) {
+    const out = { sections: [] as { title: string; body: string }[], guidance: [] as string[], tools: [] as string[], ids: [] as string[] };
+    if (conv.incognito) return out;
+    const prefs = this.prefs(user);
+    if (prefs.chatHistorySearch !== false) {
+      out.tools.push('conversation_search');
+      out.guidance.push(HISTORY_GUIDANCE);
+    }
+    if (conv.settings.useMemory === false || !(await this.d.memory.enabledFor(user))) return out;
+    out.tools.push(...MEMORY_TOOLS);
+    out.guidance.push(MEMORY_GUIDANCE);
+    const picked = await this.d.memory.retrieve(user, { query, projectId: conv.projectId }).catch((err: unknown) => {
+      this.d.log.warn({ err }, 'memory retrieval failed');
+      return [];
+    });
+    if (picked.length) {
+      out.ids = picked.map((m) => m.id);
+      out.sections.push({
+        title: 'What you remember about the user',
+        body: `Use these when relevant; they may be out of date. Don't recite them unless asked.\n${picked.map((m) => `- (id: ${m.id}, ${m.category}${m.projectId ? ', this project' : ''}) ${m.content}`).join('\n')}`,
+      });
+    }
+    return out;
   }
 
   /** Create assistant placeholders and start generations; returns immediately. */
@@ -128,6 +160,7 @@ export class ChatService {
     let remaining = created.length;
     const prefs = this.prefs(user);
     const query = parent.role === 'user' ? parent.content : '';
+    const mem = await this.memoryContext(user, conv, query);
     for (const [i, a] of created.entries()) {
       const model = models[i]!;
       const fctx = await this.d.fileContext.build({ conversationId: conv.id, projectId: conv.projectId, latestUserMessageId: parent.id, query, vision: model.model.capabilities.vision, userId: user.id });
@@ -138,11 +171,13 @@ export class ChatService {
         assistant: a,
         path,
         model,
-        systemPrompt: await this.systemPrompt(user, conv, model, fctx.sections),
+        systemPrompt: await this.systemPrompt(user, conv, model, [...mem.sections, ...fctx.sections], mem.guidance),
+        projectId: conv.projectId,
+        memoryIds: mem.ids,
         files: { citations: fctx.citations, images: fctx.images, scope: fctx.offerSearch || conv.projectId ? { fileIds: fctx.fileIds, projectId: conv.projectId } : null },
         thinking: opts.thinking ?? conv.settings.thinkingEffort ?? prefs.thinkingEffort,
         temperature: conv.settings.temperature,
-        toolNames: fctx.offerSearch || conv.projectId ? [...DEFAULT_TOOLS, 'file_search'] : DEFAULT_TOOLS,
+        toolNames: [...DEFAULT_TOOLS, ...(fctx.offerSearch || conv.projectId ? ['file_search'] : []), ...mem.tools],
         onFinished: async (ok) => {
           remaining -= 1;
           if (remaining === 0) await opts.release();

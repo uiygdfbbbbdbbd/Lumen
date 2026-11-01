@@ -55,6 +55,14 @@ export const settingSchemas = {
     maxArchiveEntries: z.number().int().min(1).max(100_000),
     maxArchiveBytes: z.number().int().min(1024).max(10 * 1024 ** 3),
   }),
+  memory: z.object({
+    /** Tokens of memories injected into each turn. */
+    tokenBudget: z.number().int().min(0).max(8000),
+    maxPerTurn: z.number().int().min(0).max(100),
+    maxPerUser: z.number().int().min(10).max(10_000),
+    /** Queue a consolidation after this many new/changed memories. */
+    consolidateAfterWrites: z.number().int().min(1).max(1000),
+  }),
 } as const;
 
 export type SettingKey = keyof typeof settingSchemas;
@@ -112,4 +120,5 @@ export const DEFAULT_SETTINGS: AllSettings = {
     maxArchiveEntries: 2000,
     maxArchiveBytes: 500 * 1024 * 1024,
   },
+  memory: { tokenBudget: 800, maxPerTurn: 15, maxPerUser: 1000, consolidateAfterWrites: 15 },
 };

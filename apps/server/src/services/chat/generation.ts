@@ -28,6 +28,10 @@ export interface GenerationJob {
   thinking: 'off' | 'low' | 'medium' | 'high' | undefined;
   temperature: number | undefined;
   toolNames: string[];
+  /** Project of the conversation (memory tool scope). */
+  projectId?: string | null;
+  /** Memories injected into this turn's system prompt (shown as "Memory used"). */
+  memoryIds?: string[];
   /** Attachment/knowledge context computed for this turn. */
   files?: { citations: import('../files/context.js').Citation[]; images: import('@lumen/llm').ContentPart[]; scope: { fileIds: string[]; projectId: string | null } | null };
   onFinished?: (ok: boolean) => Promise<void> | void;
@@ -218,6 +222,10 @@ export class GenerationRunner {
       // Images attached to the newest user message go to vision models as content parts.
       const lastUser = [...history].reverse().find((m) => m.role === 'user');
       if (lastUser && job.files?.images.length) lastUser.content = [{ type: 'text', text: typeof lastUser.content === 'string' ? lastUser.content : '' }, ...job.files.images];
+      if (job.memoryIds?.length) {
+        await publish({ type: 'memory', ids: job.memoryIds });
+        parts.push({ type: 'memory', ids: job.memoryIds });
+      }
       if (job.files?.citations.length) {
         await publish({ type: 'citations', items: job.files.citations });
         parts.push(...job.files.citations.map((c) => ({ type: 'citation' as const, ...c })));
@@ -279,7 +287,7 @@ export class GenerationRunner {
             for (const call of calls) {
               parts.push({ type: 'tool_call', round, id: call.id, name: call.name, arguments: call.arguments });
               await publish({ type: 'tool_call', id: call.id, name: call.name, arguments: call.arguments });
-              const r = await this.d.tools.execute(call.name, call.arguments, { user: job.user, conversationId: job.conversationId, signal: controller.signal, fileScope: job.files?.scope ?? undefined, messageId: job.assistant.id, emit: publish });
+              const r = await this.d.tools.execute(call.name, call.arguments, { user: job.user, conversationId: job.conversationId, signal: controller.signal, fileScope: job.files?.scope ?? undefined, projectId: job.projectId ?? null, messageId: job.assistant.id, emit: publish });
               parts.push({ type: 'tool_result', round, id: call.id, name: call.name, content: r.content, isError: r.isError });
               await publish({ type: 'tool_result', id: call.id, name: call.name, content: r.content, isError: r.isError });
               convo.push({ role: 'tool', toolCallId: call.id, name: call.name, content: r.content, isError: r.isError });

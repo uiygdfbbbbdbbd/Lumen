@@ -62,6 +62,10 @@ export const userPreferencesSchema = z.object({
   defaultStyle: z.string().max(64).optional(),
   /** Global custom instructions applied to every chat. */
   customInstructions: z.string().max(8000).optional(),
+  /** False pauses memory: nothing is read from or written to it. */
+  memoryEnabled: z.boolean().optional(),
+  /** Let the model search your past chats (never temporary chats). */
+  chatHistorySearch: z.boolean().optional(),
   /** User-remapped keyboard shortcuts: action id -> key combo. */
   shortcuts: z.record(z.string().max(64), z.string().max(64)).optional(),
 });

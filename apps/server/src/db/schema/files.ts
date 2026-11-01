@@ -1,15 +1,9 @@
 import { sql } from 'drizzle-orm';
-import { bigint, boolean, customType, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { bigint, boolean, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { users } from './users.js';
 import { conversations, messages } from './chat.js';
 
-const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' });
-/** Dimension-less pgvector column: any embedding model can be used; searches are owner-scoped exact scans. */
-const vector = customType<{ data: number[]; driverData: string }>({
-  dataType: () => 'vector',
-  toDriver: (v) => `[${v.join(',')}]`,
-  fromDriver: (v) => JSON.parse(v) as number[],
-});
+import { tsvector, vector } from './columns.js';
 
 export const fileStatusEnum = pgEnum('file_status', ['uploading', 'queued', 'processing', 'ready', 'failed', 'quarantined']);
 export const fileKindEnum = pgEnum('file_kind', ['image', 'pdf', 'document', 'presentation', 'spreadsheet', 'text', 'code', 'html', 'ebook', 'data', 'audio', 'video', 'archive', 'url', 'note', 'other']);
