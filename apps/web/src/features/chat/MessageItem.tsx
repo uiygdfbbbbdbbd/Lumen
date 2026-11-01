@@ -9,6 +9,7 @@ import type { Citation } from './store.js';
 import { ToolCard } from './ToolCard.js';
 import { ArtifactCard, ARTIFACT_TOOLS } from '../artifacts/ArtifactCard.js';
 import { MEMORY_TOOL_NAMES, MemoryToolCard, MemoryUsed } from '../memory/MemoryUsed.js';
+import { AskUserCard, InlineChart, InlineDiagram, WebToolRow } from './ToolViews.js';
 import type { LiveStream } from './store.js';
 import type { ChatMessage } from './types.js';
 
@@ -21,6 +22,8 @@ export interface MessageActions {
   onRate: (id: string, rating: -1 | 0 | 1) => Promise<void>;
   onQuote: (text: string) => void;
   onTryAnotherModel: (id: string) => void;
+  /** Answer a clarifying question card (sent as the next user message). */
+  onAnswer?: (text: string) => void;
 }
 
 interface Props extends MessageActions {
@@ -28,6 +31,8 @@ interface Props extends MessageActions {
   live: LiveStream | undefined;
   siblings: { list: ChatMessage[]; position: number };
   user: { name: string; avatarUrl: string | null; id: string };
+  /** Last message in the active branch (question cards can still be answered). */
+  isLast?: boolean;
 }
 
 function speak(text: string) {
@@ -51,7 +56,7 @@ function Reasoning({ text, streaming }: { text: string; streaming: boolean }) {
   );
 }
 
-export const MessageItem = memo(function MessageItem({ message: m, live, siblings, user, ...a }: Props) {
+export const MessageItem = memo(function MessageItem({ message: m, live, siblings, user, isLast = false, ...a }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(m.content);
   const streaming = m.status === 'streaming' && (!live || live.status === 'streaming');
@@ -127,6 +132,14 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
       {tools.map((t) =>
         ARTIFACT_TOOLS.has(t.name) ? (
           <ArtifactCard key={t.id} name={t.name} args={t.arguments} result={t.result} live={live?.artifacts} />
+        ) : t.name === 'ask_user' ? (
+          <AskUserCard key={t.id} args={t.arguments} answerable={isLast && !streaming} onAnswer={a.onAnswer} />
+        ) : t.name === 'show_chart' ? (
+          <InlineChart key={t.id} args={t.arguments} result={t.result} />
+        ) : t.name === 'show_diagram' ? (
+          <InlineDiagram key={t.id} args={t.arguments} result={t.result} />
+        ) : t.name === 'web_search' || t.name === 'web_fetch' ? (
+          <WebToolRow key={t.id} name={t.name} args={t.arguments} result={t.result} />
         ) : MEMORY_TOOL_NAMES.has(t.name) ? (
           <MemoryToolCard key={t.id} name={t.name} args={t.arguments} result={t.result} />
         ) : (

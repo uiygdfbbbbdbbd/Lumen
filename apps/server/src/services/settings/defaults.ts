@@ -55,6 +55,26 @@ export const settingSchemas = {
     maxArchiveEntries: z.number().int().min(1).max(100_000),
     maxArchiveBytes: z.number().int().min(1024).max(10 * 1024 ** 3),
   }),
+  webSearch: z.object({
+    provider: z.enum(['none', 'searxng', 'brave', 'tavily', 'serper', 'bing']),
+    /** SearXNG instance URL (e.g. http://searxng:8080). */
+    baseUrl: z.string().max(500),
+    /** Encrypted with the platform key; set via PUT /api/admin/web-search/key, never returned. */
+    apiKeyEncrypted: z.string().max(4000).nullable(),
+    maxResults: z.number().int().min(1).max(20),
+    safeSearch: z.boolean(),
+    respectRobots: z.boolean(),
+    cacheTtlMinutes: z.number().int().min(0).max(1440),
+    fetchMaxChars: z.number().int().min(1000).max(200_000),
+    /** Domains never shown or fetched (source quality filter). */
+    blockedDomains: z.array(z.string().max(253)).max(1000),
+  }),
+  tools: z.object({
+    /** Open-Meteo weather (no key needed). */
+    weather: z.boolean(),
+    /** ECB reference rates via frankfurter.app. */
+    currency: z.boolean(),
+  }),
   memory: z.object({
     /** Tokens of memories injected into each turn. */
     tokenBudget: z.number().int().min(0).max(8000),
@@ -120,5 +140,7 @@ export const DEFAULT_SETTINGS: AllSettings = {
     maxArchiveEntries: 2000,
     maxArchiveBytes: 500 * 1024 * 1024,
   },
+  webSearch: { provider: 'none', baseUrl: '', apiKeyEncrypted: null, maxResults: 6, safeSearch: true, respectRobots: true, cacheTtlMinutes: 60, fetchMaxChars: 20_000, blockedDomains: [] },
+  tools: { weather: true, currency: true },
   memory: { tokenBudget: 800, maxPerTurn: 15, maxPerUser: 1000, consolidateAfterWrites: 15 },
 };

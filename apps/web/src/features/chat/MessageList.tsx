@@ -55,7 +55,7 @@ export function MessageList({ path, idx, compactedThrough, user, ...actions }: P
             return (
               <div key={item.key} data-index={item.index} ref={v.measureElement} className="absolute left-0 right-0 px-4" style={{ transform: `translateY(${item.start}px)` }}>
                 {row.kind === 'message' ? (
-                  <MessageItem message={row.message} live={streams[row.message.id]} siblings={siblingsOf(idx, row.message)} user={user} {...actions} />
+                  <MessageItem message={row.message} live={streams[row.message.id]} siblings={siblingsOf(idx, row.message)} user={user} isLast={row.message.id === path[path.length - 1]?.id} {...actions} />
                 ) : row.kind === 'compaction' ? (
                   <div className="my-2 flex items-center gap-2 text-xs text-fg-2" role="note">
                     <span className="h-px flex-1 bg-border" />

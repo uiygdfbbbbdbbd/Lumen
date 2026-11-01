@@ -1,5 +1,5 @@
 import type { ToolDefinition } from '@lumen/llm';
-import type { ChatStreamEvent } from '@lumen/shared';
+import type { ChatStreamEvent, WebCitation } from '@lumen/shared';
 import type { UserRow } from '../../db/schema/index.js';
 
 export interface ToolContext {
@@ -14,10 +14,16 @@ export interface ToolContext {
   messageId?: string | null;
   /** Push an event to the live stream (e.g. artifact created). */
   emit?: (e: ChatStreamEvent) => Promise<void>;
+  /** Register sources the answer can cite; returns their [n] numbers. */
+  cite?: (items: Omit<WebCitation, 'n'>[]) => Promise<number[]>;
+  /** URLs web_fetch may open in this response (user-provided or from search results). */
+  urls?: { allowed(url: string): boolean; add(urls: string[]): void };
 }
 
 export interface Tool {
   definition: ToolDefinition;
+  /** Stop the generation after this tool runs; the user responds next (ask_user). */
+  endsTurn?: boolean;
   /** Returns text for the model. Throwing produces an error result the model can react to. */
   run(args: Record<string, unknown>, ctx: ToolContext): Promise<string>;
 }

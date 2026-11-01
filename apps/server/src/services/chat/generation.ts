@@ -1,6 +1,6 @@
 import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { complete, estimateCost, estimateMessages, LlmError, type ChatMessage, type ToolCall, type Usage } from '@lumen/llm';
-import { LumenError, type ChatStreamEvent, type ErrorCode } from '@lumen/shared';
+import { LumenError, type ChatStreamEvent, type CitationItem, type ErrorCode, type WebCitation } from '@lumen/shared';
 import type { Logger } from 'pino';
 import type { Database } from '../../db/client.js';
 import { compactions, conversations, messages, usageEvents, type MessagePart, type MessageRow, type UserRow } from '../../db/schema/index.js';
@@ -12,6 +12,7 @@ import type { ModelCatalogService, ResolvedModel } from '../models/catalog.servi
 import type { ProviderService } from '../providers/provider.service.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import { toChatMessages } from './prompt.js';
+import { normalizeUrl, urlsIn } from '../tools/web-tools.js';
 
 const MAX_TOOL_ROUNDS = 8;
 const FLUSH_MS = 1500;
@@ -230,6 +231,26 @@ export class GenerationRunner {
         await publish({ type: 'citations', items: job.files.citations });
         parts.push(...job.files.citations.map((c) => ({ type: 'citation' as const, ...c })));
       }
+      // Sources found by tools (web pages) continue the [n] numbering after file excerpts.
+      const allCitations: CitationItem[] = [...(job.files?.citations ?? [])];
+      const cite = async (items: Omit<WebCitation, 'n'>[]) => {
+        const numbers: number[] = [];
+        for (const it of items) {
+          const existing = allCitations.find((c) => c.kind === 'web' && normalizeUrl(c.url) === normalizeUrl(it.url));
+          if (existing) {
+            numbers.push(existing.n);
+            continue;
+          }
+          const c: WebCitation = { ...it, n: allCitations.length + 1 };
+          allCitations.push(c);
+          parts.push({ type: 'citation', ...c });
+          numbers.push(c.n);
+        }
+        await publish({ type: 'citations', items: allCitations });
+        return numbers;
+      };
+      const allowedUrls = new Set(job.path.filter((m) => m.role === 'user').flatMap((m) => urlsIn(m.content)).map(normalizeUrl));
+      const urls = { allowed: (u: string) => allowedUrls.has(normalizeUrl(u)), add: (list: string[]) => list.forEach((u) => allowedUrls.add(normalizeUrl(u))) };
       const candidates = await this.candidates(job);
       let firstError: unknown = null;
       const toolDefs = job.toolNames.length && job.model.model.capabilities.tools ? this.d.tools.definitions(job.toolNames) : [];
@@ -287,12 +308,17 @@ export class GenerationRunner {
             for (const call of calls) {
               parts.push({ type: 'tool_call', round, id: call.id, name: call.name, arguments: call.arguments });
               await publish({ type: 'tool_call', id: call.id, name: call.name, arguments: call.arguments });
-              const r = await this.d.tools.execute(call.name, call.arguments, { user: job.user, conversationId: job.conversationId, signal: controller.signal, fileScope: job.files?.scope ?? undefined, projectId: job.projectId ?? null, messageId: job.assistant.id, emit: publish });
+              const r = await this.d.tools.execute(call.name, call.arguments, { user: job.user, conversationId: job.conversationId, signal: controller.signal, fileScope: job.files?.scope ?? undefined, projectId: job.projectId ?? null, messageId: job.assistant.id, emit: publish, cite, urls });
               parts.push({ type: 'tool_result', round, id: call.id, name: call.name, content: r.content, isError: r.isError });
               await publish({ type: 'tool_result', id: call.id, name: call.name, content: r.content, isError: r.isError });
               convo.push({ role: 'tool', toolCallId: call.id, name: call.name, content: r.content, isError: r.isError });
             }
             await flush();
+            // Some tools hand the turn back to the user (e.g. ask_user shows a question card).
+            if (calls.some((c) => this.d.tools.get(c.name)?.endsTurn)) {
+              finishReason = 'tool_handoff';
+              break;
+            }
           }
           const cost = await this.recordUsage(job, m, keyId, usage, 'chat', this.d.now().getTime() - attemptStart, firstTokenMs, 'ok');
           await this.d.providers.reportSuccess(m.provider.id, keyId, cost);

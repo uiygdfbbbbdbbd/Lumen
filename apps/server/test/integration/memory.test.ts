@@ -210,7 +210,8 @@ describe('managing memory', () => {
   });
 
   it('consolidation merges duplicates and writes a summary; writes queue it automatically', async () => {
-    const [{ id: a }] = await t.c.db.insert(memories).values({ userId, content: 'Enjoys hiking in the Alps.', category: 'preferences' }).returning({ id: memories.id });
+    const [inserted] = await t.c.db.insert(memories).values({ userId, content: 'Enjoys hiking in the Alps.', category: 'preferences' }).returning({ id: memories.id });
+    const a = inserted!.id;
     await t.c.db.insert(memories).values({ userId, content: 'enjoys hiking in the alps', category: 'preferences', pinned: true });
     const r = (await user.post('/api/memories/consolidate')).json();
     expect(r.merged).toBeGreaterThanOrEqual(1);

@@ -92,6 +92,11 @@ export const styleInputSchema = z.object({
 });
 export const styleFromSampleSchema = z.object({ name: z.string().trim().min(1).max(60), sample: z.string().trim().min(50).max(20_000) });
 
+/** A numbered source the answer can cite as [n]: an excerpt of a file, or a web page. */
+export type FileCitation = { n: number; kind?: 'file'; chunkId: string; fileId: string; fileName: string; location: { page?: number; section?: string }; snippet: string };
+export type WebCitation = { n: number; kind: 'web'; url: string; title: string; snippet: string; siteName?: string };
+export type CitationItem = FileCitation | WebCitation;
+
 /** Events on a message stream (SSE `data:` payloads). `seq` enables resume via Last-Event-ID. */
 export type ChatStreamEvent =
   | { type: 'start'; messageId: string; model: { id: string | null; name: string | null } }
@@ -103,7 +108,7 @@ export type ChatStreamEvent =
   | { type: 'compacted'; tokensBefore: number; tokensAfter: number }
   | { type: 'artifact'; id: string; version: number; title: string; artifactType: string; action: 'created' | 'updated' }
   | { type: 'memory'; ids: string[] }
-  | { type: 'citations'; items: { n: number; chunkId: string; fileId: string; fileName: string; location: { page?: number; section?: string }; snippet: string }[] }
+  | { type: 'citations'; items: CitationItem[] }
   | { type: 'usage'; inputTokens: number; outputTokens: number; contextTokens: number; contextWindow: number }
   | { type: 'done'; status: 'complete' | 'cancelled'; finishReason: string }
   | { type: 'error'; code: string; message: string; resetAt?: string; retryable: boolean };

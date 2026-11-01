@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ChatStreamEvent } from '@lumen/shared';
+import type { ChatStreamEvent, CitationItem } from '@lumen/shared';
 
 export interface LiveTool {
   id: string;
@@ -31,14 +31,7 @@ export interface LiveArtifact {
   action: 'created' | 'updated';
 }
 
-export interface Citation {
-  n: number;
-  chunkId: string;
-  fileId: string;
-  fileName: string;
-  location: { page?: number; section?: string };
-  snippet: string;
-}
+export type Citation = CitationItem;
 
 const empty = (): LiveStream => ({ text: '', reasoning: '', tools: [], status: 'streaming', error: null, fallback: null, compacted: false, reconnecting: false, usage: null, citations: [], artifacts: [], memoryIds: [] });
 

@@ -1,11 +1,12 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { cn } from '@lumen/ui';
-import { Boxes, Library, Server } from 'lucide-react';
+import { Boxes, Globe, Library, Server } from 'lucide-react';
 
 const NAV = [
   { to: '/admin/providers', label: 'Providers', icon: <Server size={16} /> },
   { to: '/admin/models', label: 'Models', icon: <Boxes size={16} /> },
   { to: '/admin/rag', label: 'Knowledge & RAG', icon: <Library size={16} /> },
+  { to: '/admin/web', label: 'Web & tools', icon: <Globe size={16} /> },
 ] as const;
 
 export function AdminLayout() {

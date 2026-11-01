@@ -202,6 +202,7 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
           onRate={(id, r) => run(() => chat.rate(id, r))}
           onQuote={(text) => composer.current?.insert(text.split('\n').map((l) => `> ${l}`).join('\n'))}
           onTryAnotherModel={() => document.querySelector<HTMLButtonElement>('[aria-label^="Model:"]')?.click()}
+          onAnswer={(text) => void sendText(text)}
         />
       )}
 

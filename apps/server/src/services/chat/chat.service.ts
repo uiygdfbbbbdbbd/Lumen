@@ -20,9 +20,12 @@ import type { GenerationRunner } from './generation.js';
 import { buildSystemPrompt, builtinStyle } from './prompt.js';
 import { ARTIFACT_GUIDANCE } from '../tools/artifact-tools.js';
 import { HISTORY_GUIDANCE, MEMORY_GUIDANCE, MEMORY_TOOLS } from '../tools/memory-tools.js';
+import { INTERACTIVE_GUIDANCE, INTERACTIVE_TOOLS } from '../tools/interactive-tools.js';
+import { WEB_GUIDANCE, WEB_TOOLS } from '../tools/web-tools.js';
+import type { WebService } from '../web/web.service.js';
 import type { MemoryService } from '../memory/memory.service.js';
 
-export const DEFAULT_TOOLS = ['calculator', 'current_datetime', 'create_artifact', 'update_artifact', 'rewrite_artifact'];
+export const DEFAULT_TOOLS = ['calculator', 'current_datetime', 'convert_units', 'create_artifact', 'update_artifact', 'rewrite_artifact', ...INTERACTIVE_TOOLS];
 
 export interface ChatDeps {
   db: Database;
@@ -41,6 +44,7 @@ export interface ChatDeps {
   fileContext: FileContextBuilder;
   projects: ProjectService;
   memory: MemoryService;
+  web: WebService;
 }
 
 type Thinking = 'off' | 'low' | 'medium' | 'high';
@@ -105,6 +109,19 @@ export class ChatService {
     });
   }
 
+  /** Tools that depend on server configuration and the user's tier. */
+  private async extraTools(ent: Entitlements) {
+    const out = { tools: [] as string[], guidance: [] as string[] };
+    const toggles = await this.d.settings.get('tools');
+    if (toggles.weather) out.tools.push('get_weather');
+    if (toggles.currency) out.tools.push('convert_currency');
+    if (ent.features.webSearch.allowed) {
+      out.tools.push(...((await this.d.web.configured()) ? WEB_TOOLS : ['web_fetch']));
+      out.guidance.push(WEB_GUIDANCE);
+    }
+    return out;
+  }
+
   /**
    * Memory for one turn. Temporary chats, paused memory, and chats with memory turned off neither read nor
    * write it (no memories injected, no memory tools offered).
@@ -135,7 +152,7 @@ export class ChatService {
   }
 
   /** Create assistant placeholders and start generations; returns immediately. */
-  private async launch(user: UserRow, conv: ConversationRow, parent: MessageRow, models: ResolvedModel[], opts: { thinking?: Thinking; release: () => Promise<void> }) {
+  private async launch(user: UserRow, conv: ConversationRow, parent: MessageRow, models: ResolvedModel[], opts: { thinking?: Thinking; release: () => Promise<void>; ent: Entitlements }) {
     const all = await this.d.conversations.messagesOf(conv.id);
     const ids = pathTo(all, parent.id);
     const byId = new Map(all.map((m) => [m.id, m]));
@@ -161,6 +178,7 @@ export class ChatService {
     const prefs = this.prefs(user);
     const query = parent.role === 'user' ? parent.content : '';
     const mem = await this.memoryContext(user, conv, query);
+    const extra = await this.extraTools(opts.ent);
     for (const [i, a] of created.entries()) {
       const model = models[i]!;
       const fctx = await this.d.fileContext.build({ conversationId: conv.id, projectId: conv.projectId, latestUserMessageId: parent.id, query, vision: model.model.capabilities.vision, userId: user.id });
@@ -171,13 +189,13 @@ export class ChatService {
         assistant: a,
         path,
         model,
-        systemPrompt: await this.systemPrompt(user, conv, model, [...mem.sections, ...fctx.sections], mem.guidance),
+        systemPrompt: await this.systemPrompt(user, conv, model, [...mem.sections, ...fctx.sections], [INTERACTIVE_GUIDANCE, ...extra.guidance, ...mem.guidance]),
         projectId: conv.projectId,
         memoryIds: mem.ids,
         files: { citations: fctx.citations, images: fctx.images, scope: fctx.offerSearch || conv.projectId ? { fileIds: fctx.fileIds, projectId: conv.projectId } : null },
         thinking: opts.thinking ?? conv.settings.thinkingEffort ?? prefs.thinkingEffort,
         temperature: conv.settings.temperature,
-        toolNames: [...DEFAULT_TOOLS, ...(fctx.offerSearch || conv.projectId ? ['file_search'] : []), ...mem.tools],
+        toolNames: [...DEFAULT_TOOLS, ...extra.tools, ...(fctx.offerSearch || conv.projectId ? ['file_search'] : []), ...mem.tools],
         onFinished: async (ok) => {
           remaining -= 1;
           if (remaining === 0) await opts.release();
@@ -217,7 +235,7 @@ export class ChatService {
         .returning();
       await this.d.fileContext.attach(conv.id, userMsg!.id, attached.map((f) => f.id));
       await this.d.db.update(conversations).set({ messageCount: sql`${conversations.messageCount} + 1`, ...(input.modelId && !input.compareModelIds ? { modelId: input.modelId } : {}) }).where(eq(conversations.id, conv.id));
-      const assistants = await this.launch(user, conv, userMsg!, models, { thinking: input.thinkingEffort, release });
+      const assistants = await this.launch(user, conv, userMsg!, models, { thinking: input.thinkingEffort, release, ent });
       return { userMessage: serializeMessage(userMsg!), assistantMessages: assistants.map(serializeMessage) };
     } catch (e) {
       await release();
@@ -235,7 +253,7 @@ export class ChatService {
     const model = await this.resolveModel(user, conv, input.modelId ?? target.modelId ?? undefined);
     const release = await this.admit(user, ent, 1);
     try {
-      const [a] = await this.launch(user, conv, parent!, [model], { thinking: input.thinkingEffort, release });
+      const [a] = await this.launch(user, conv, parent!, [model], { thinking: input.thinkingEffort, release, ent });
       return { assistantMessage: serializeMessage(a!) };
     } catch (e) {
       await release();

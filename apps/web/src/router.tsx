@@ -165,13 +165,14 @@ const adminIndex = createRoute({ getParentRoute: () => adminRoute, path: '/', be
 const adminProviders = createRoute({ getParentRoute: () => adminRoute, path: '/providers', component: ProvidersPage });
 const adminModels = createRoute({ getParentRoute: () => adminRoute, path: '/models', component: ModelsPage });
 const adminRag = createRoute({ getParentRoute: () => adminRoute, path: '/rag', component: RagSettingsPage });
+const adminWeb = createRoute({ getParentRoute: () => adminRoute, path: '/web', component: lazyRouteComponent(() => import('./features/admin/WebToolsPage.js'), 'WebToolsPage') });
 
 const routeTree = root.addChildren([
   publicArtifactRoute,
   guest.addChildren([loginRoute, signupRoute, forgotRoute, resetRoute, verifyRoute, magicRoute, emailChangeRoute]),
   authed.addChildren([
     onboardingRoute,
-    shell.addChildren([homeRoute, chatRoute, temporaryRoute, filesRoute, projectsRoute, projectRoute, artifactsRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, memoryRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels, adminRag])]),
+    shell.addChildren([homeRoute, chatRoute, temporaryRoute, filesRoute, projectsRoute, projectRoute, artifactsRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, memoryRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels, adminRag, adminWeb])]),
   ]),
 ]);
 
