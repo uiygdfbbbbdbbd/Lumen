@@ -1,0 +1,74 @@
+/*
+ * Lumen design tokens -> Tailwind v4 theme. Runtime values come from CSS variables (--lm-*)
+ * written by the theme engine (@lumen/shared themeToCssVars), so switching themes is a variable swap.
+ */
+@theme inline {
+  --color-bg: var(--lm-bg);
+  --color-surface: var(--lm-surface);
+  --color-elevated: var(--lm-elevated);
+  --color-border: var(--lm-border);
+  --color-fg: var(--lm-text);
+  --color-fg-2: var(--lm-text-2);
+  --color-fg-3: var(--lm-text-3);
+  --color-accent: var(--lm-accent);
+  --color-accent-fg: var(--lm-accent-fg);
+  --color-accent-hover: var(--lm-accent-hover);
+  --color-accent-soft: var(--lm-accent-soft);
+  --color-hover: var(--lm-hover);
+  --color-success: var(--lm-success);
+  --color-warning: var(--lm-warning);
+  --color-danger: var(--lm-danger);
+  --color-danger-fg: var(--lm-danger-fg);
+  --color-info: var(--lm-info);
+  --color-code: var(--lm-code);
+  --color-code-bg: var(--lm-code-bg);
+  --font-sans: var(--lm-font-sans);
+  --font-mono: var(--lm-font-mono);
+  --radius-sm: var(--lm-radius-sm);
+  --radius-md: var(--lm-radius-md);
+  --radius-lg: var(--lm-radius-lg);
+  --shadow-sm: var(--lm-shadow-sm);
+  --shadow-md: var(--lm-shadow-md);
+  --shadow-lg: var(--lm-shadow-lg);
+  --ease-lm: var(--lm-ease);
+}
+
+@layer base {
+  :root {
+    /* Fallback = built-in Light theme, so the app is usable before the theme engine runs. */
+    --lm-bg: #fbfbfd; --lm-surface: #f3f3f7; --lm-elevated: #ffffff; --lm-border: #d4d4de;
+    --lm-text: #16161d; --lm-text-2: #4a4a5a; --lm-text-3: #6a6a79; --lm-accent: #5b4bdb; --lm-accent-fg: #ffffff;
+    --lm-accent-hover: #5042c1; --lm-accent-soft: #e9e7fa; --lm-hover: #e8e8ee; --lm-success: #17803d; --lm-warning: #a35a00;
+    --lm-danger: #c62a2f; --lm-danger-fg: #ffffff; --lm-info: #1d6fb8; --lm-code: #24292f; --lm-code-bg: #f1f1f5; --lm-selection: #5b4bdb33;
+    --lm-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --lm-font-mono: 'JetBrains Mono', ui-monospace, monospace; --lm-font-size-base: 15px; --lm-line-height: 1.6;
+    --lm-radius-sm: 6px; --lm-radius-md: 10px; --lm-radius-lg: 16px; --lm-density: 1;
+    --lm-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06); --lm-shadow-md: 0 4px 12px rgb(0 0 0 / 0.08); --lm-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.12);
+    --lm-blur: 8px; --lm-motion: 1; --lm-ease: cubic-bezier(0.2, 0, 0, 1); --lm-chat-width: 48rem; --lm-app-bg: var(--lm-bg);
+    color-scheme: light dark;
+  }
+  html {
+    font-family: var(--lm-font-sans);
+    font-size: var(--lm-font-size-base);
+    line-height: var(--lm-line-height);
+    background: var(--lm-app-bg);
+    color: var(--lm-text);
+    -webkit-font-smoothing: antialiased;
+  }
+  body { min-height: 100dvh; }
+  ::selection { background: var(--lm-selection); }
+  :focus-visible { outline: 2px solid var(--lm-accent); outline-offset: 2px; }
+  code, kbd, pre, samp { font-family: var(--lm-font-mono); }
+}
+
+/* Motion: every transition scales with the theme, and disappears for reduced-motion users. */
+.lm-transition { transition-duration: calc(150ms * var(--lm-motion)); transition-timing-function: var(--lm-ease); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+@media (prefers-contrast: more) {
+  :root { --lm-border: var(--lm-text-2); }
+}
+.lm-skeleton { background: linear-gradient(90deg, var(--lm-surface), var(--lm-hover), var(--lm-surface)); background-size: 200% 100%; animation: lm-shimmer 1.4s infinite linear; }
+@keyframes lm-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes lm-spin { to { transform: rotate(360deg); } }

@@ -16,6 +16,7 @@ export const displayNameSchema = z
   .trim()
   .min(1, 'Name is required.')
   .max(80)
+  // eslint-disable-next-line no-control-regex -- rejecting control characters is the point
   .refine((s) => !/[\u0000-\u001f\u007f<>]/.test(s), 'Name contains invalid characters.');
 export const timezoneSchema = z
   .string()

@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+.git
+.env
+.data
+tests/e2e/test-results
+tests/e2e/playwright-report

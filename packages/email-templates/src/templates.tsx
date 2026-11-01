@@ -1,3 +1,5 @@
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import { Cta, Fallback, Heading, Layout, P, type Brand } from './layout.js';
 
 export interface TemplateProps {

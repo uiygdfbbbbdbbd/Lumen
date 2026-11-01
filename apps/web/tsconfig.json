@@ -1,0 +1,1 @@
+{ "extends": "@lumen/tsconfig/react.json", "compilerOptions": { "customConditions": ["@lumen/source"], "types": ["vite/client", "@testing-library/jest-dom/vitest"] }, "include": ["src", "test", "vite.config.ts"] }

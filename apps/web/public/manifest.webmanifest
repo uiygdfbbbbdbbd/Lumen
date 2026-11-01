@@ -1,0 +1,10 @@
+{
+  "name": "Lumen",
+  "short_name": "Lumen",
+  "description": "A free, open AI workspace.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#131318",
+  "theme_color": "#5b4bdb",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

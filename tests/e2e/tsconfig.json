@@ -1,0 +1,1 @@
+{ "extends": "@lumen/tsconfig/base.json", "compilerOptions": { "noEmit": true, "types": ["node"] }, "include": ["specs", "support", "playwright.config.ts"] }

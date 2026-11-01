@@ -43,7 +43,7 @@ describe('password strength', () => {
 describe('HIBP k-anonymity', () => {
   it('only sends the 5-char prefix and detects breaches', async () => {
     const sha = createHash('sha1').update('password').digest('hex').toUpperCase();
-    const fetchMock = vi.fn(async (url: string) => new Response(`${sha.slice(5)}:3861493\r\nAAAA:0`, { status: 200 }));
+    const fetchMock = vi.fn(async (_url: string) => new Response(`${sha.slice(5)}:3861493\r\nAAAA:0`, { status: 200 }));
     const check = hibpChecker(fetchMock as unknown as typeof fetch);
     expect(await check('password')).toBe(true);
     expect(fetchMock.mock.calls[0]![0]).toBe(`https://api.pwnedpasswords.com/range/${sha.slice(0, 5)}`);
