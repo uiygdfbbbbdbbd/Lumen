@@ -223,7 +223,7 @@ describe('artifact files', () => {
 
 describe('artifact cards and stream events', () => {
   it('records artifact events in the live stream', () => {
-    const s = reduce({ text: '', reasoning: '', tools: [], status: 'streaming', error: null, fallback: null, compacted: false, reconnecting: false, usage: null, citations: [], artifacts: [] }, { type: 'artifact', id: 'x', version: 2, title: 'T', artifactType: 'markdown', action: 'updated' });
+    const s = reduce({ text: '', reasoning: '', tools: [], status: 'streaming', error: null, fallback: null, compacted: false, reconnecting: false, usage: null, citations: [], artifacts: [], memoryIds: [] }, { type: 'artifact', id: 'x', version: 2, title: 'T', artifactType: 'markdown', action: 'updated' });
     expect(s.artifacts).toEqual([{ id: 'x', version: 2, title: 'T', artifactType: 'markdown', action: 'updated' }]);
   });
   it('identifies the artifact from tool arguments, results or live events', () => {

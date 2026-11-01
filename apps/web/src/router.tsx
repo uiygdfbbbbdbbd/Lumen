@@ -149,6 +149,7 @@ const appearanceRoute = createRoute({ getParentRoute: () => settingsRoute, path:
 const chatSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/chat', component: ChatSettings });
 const shortcutsRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/shortcuts', component: ShortcutSettings });
 const usageRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/usage', component: UsageSettings });
+const memoryRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/memory', component: lazyRouteComponent(() => import('./features/memory/MemorySettings.js'), 'MemorySettings') });
 const privacyRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/privacy', component: PrivacySettings });
 const designRoute = createRoute({ getParentRoute: () => shell, path: '/design-system', component: DesignSystemPage });
 const adminRoute = createRoute({
@@ -170,7 +171,7 @@ const routeTree = root.addChildren([
   guest.addChildren([loginRoute, signupRoute, forgotRoute, resetRoute, verifyRoute, magicRoute, emailChangeRoute]),
   authed.addChildren([
     onboardingRoute,
-    shell.addChildren([homeRoute, chatRoute, temporaryRoute, filesRoute, projectsRoute, projectRoute, artifactsRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels, adminRag])]),
+    shell.addChildren([homeRoute, chatRoute, temporaryRoute, filesRoute, projectsRoute, projectRoute, artifactsRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, memoryRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels, adminRag])]),
   ]),
 ]);
 

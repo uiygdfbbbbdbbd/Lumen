@@ -13,7 +13,7 @@ test.beforeAll(async ({ browser }) => {
   await admin.waitForURL((u) => u.pathname === '/');
   await admin.goto('/admin/rag');
   await admin.getByLabel('Embedding model').selectOption({ label: 'mock-embed (mock-embed)' });
-  await admin.getByRole('button', { name: 'Save' }).click();
+  await admin.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(admin.getByText('Settings saved').first()).toBeVisible();
   await ctx.close();
 

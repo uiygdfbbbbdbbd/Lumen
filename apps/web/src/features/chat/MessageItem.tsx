@@ -8,6 +8,7 @@ import { fileUrl } from '../files/upload.js';
 import type { Citation } from './store.js';
 import { ToolCard } from './ToolCard.js';
 import { ArtifactCard, ARTIFACT_TOOLS } from '../artifacts/ArtifactCard.js';
+import { MEMORY_TOOL_NAMES, MemoryToolCard, MemoryUsed } from '../memory/MemoryUsed.js';
 import type { LiveStream } from './store.js';
 import type { ChatMessage } from './types.js';
 
@@ -67,6 +68,7 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
           });
   const error = live?.error ?? (m.status === 'error' ? m.error : null);
   const citations = (live && m.status === 'streaming' ? live.citations : (m.parts.filter((p) => p.type === 'citation') as unknown as Citation[])) ?? [];
+  const memoryIds = (live && m.status === 'streaming' ? live.memoryIds : ((m.parts.find((p) => p.type === 'memory') as { ids?: string[] } | undefined)?.ids ?? [])) ?? [];
   const attachments = m.parts.filter((p) => p.type === 'attachment') as unknown as { fileId: string; name: string; kind: string }[];
 
   if (m.role === 'user') {
@@ -122,7 +124,15 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
       {live?.fallback ? <p className="mb-2 text-xs text-warning">{live.fallback}</p> : null}
       {live?.compacted ? <p className="mb-2 text-xs text-fg-2">Earlier messages were summarized to fit the model’s context window.</p> : null}
       {reasoning ? <Reasoning text={reasoning} streaming={streaming && !text} /> : null}
-      {tools.map((t) => (ARTIFACT_TOOLS.has(t.name) ? <ArtifactCard key={t.id} name={t.name} args={t.arguments} result={t.result} live={live?.artifacts} /> : <ToolCard key={t.id} name={t.name} args={t.arguments} result={t.result} />))}
+      {tools.map((t) =>
+        ARTIFACT_TOOLS.has(t.name) ? (
+          <ArtifactCard key={t.id} name={t.name} args={t.arguments} result={t.result} live={live?.artifacts} />
+        ) : MEMORY_TOOL_NAMES.has(t.name) ? (
+          <MemoryToolCard key={t.id} name={t.name} args={t.arguments} result={t.result} />
+        ) : (
+          <ToolCard key={t.id} name={t.name} args={t.arguments} result={t.result} />
+        ),
+      )}
       {text ? <Markdown text={text} citations={citations} /> : streaming ? <span className="inline-flex gap-1 py-2" aria-label="Generating"><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3" /><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3 [animation-delay:150ms]" /><span className="h-2 w-2 animate-pulse rounded-full bg-fg-3 [animation-delay:300ms]" /></span> : null}
       {!streaming ? <SourcesList citations={citations} /> : null}
       {live?.reconnecting ? <p className="mt-1 text-xs text-fg-2" role="status">Reconnecting… your response is still being generated.</p> : null}
@@ -156,6 +166,7 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
             <IconButton size="icon-sm" label="Quote in reply" icon={<Quote size={14} />} onClick={() => a.onQuote(window.getSelection()?.toString() || m.content)} />
             <IconButton size="icon-sm" label="Read aloud" icon={<Volume2 size={14} />} onClick={() => speak(m.content)} />
             <IconButton size="icon-sm" label="Delete response" icon={<Trash2 size={14} />} onClick={() => a.onDelete(m.id)} />
+            <MemoryUsed ids={memoryIds} />
             {m.modelName ? (
               <Tooltip content={m.usage ? `${m.usage.inputTokens} in · ${m.usage.outputTokens} out${m.usage.latencyMs ? ` · ${(m.usage.latencyMs / 1000).toFixed(1)}s` : ''}` : m.modelName}>
                 <span tabIndex={0} className="ml-1 text-xs">{m.modelName}</span>

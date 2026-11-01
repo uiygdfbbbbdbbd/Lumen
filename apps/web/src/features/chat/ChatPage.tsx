@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { BUILTIN_STYLES } from '@lumen/shared';
 import { Badge, Banner, Button, Dialog, DialogContent, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, Field, IconButton, Select, Skeleton, Textarea, Tooltip, toast } from '@lumen/ui';
-import { Archive, Copy, EyeOff, Layers, MoreHorizontal, NotebookPen, Star, Trash2 } from 'lucide-react';
+import { Archive, Brain, Copy, EyeOff, Layers, MoreHorizontal, NotebookPen, Star, Trash2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, errorMessage } from '../../lib/api.js';
 import { useMe } from '../../lib/auth.js';
@@ -148,6 +148,11 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
             <DropdownMenuTrigger asChild><IconButton label="Chat options" icon={<MoreHorizontal size={18} />} /></DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onSelect={() => { setInstructions(conv.instructions); setInstructionsOpen(true); }}><NotebookPen size={16} aria-hidden="true" /> Instructions & style</DropdownMenuItem>
+              {!conv.incognito ? (
+                <DropdownMenuItem onSelect={() => patch.mutate({ id: conv.id, settings: { useMemory: conv.settings.useMemory === false } })}>
+                  <Brain size={16} aria-hidden="true" /> {conv.settings.useMemory === false ? 'Use memory in this chat' : 'Don’t use memory in this chat'}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem onSelect={() => patch.mutate({ id: conv.id, starred: !conv.starred })}><Star size={16} aria-hidden="true" /> {conv.starred ? 'Unstar' : 'Star'}</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => run(async () => { const c = await api<{ id: string }>(`/api/conversations/${conv.id}/duplicate`, { method: 'POST' }); await navigate({ to: '/c/$conversationId', params: { conversationId: c.id } }); })}><Copy size={16} aria-hidden="true" /> Duplicate</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => patch.mutate({ id: conv.id, archived: !conv.archived })}><Archive size={16} aria-hidden="true" /> {conv.archived ? 'Unarchive' : 'Archive'}</DropdownMenuItem>

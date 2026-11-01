@@ -26,7 +26,7 @@ export function RagSettingsPage() {
     <>
       <header>
         <h2 className="text-xl font-semibold">Knowledge & RAG</h2>
-        <p className="text-sm text-fg-2">How uploaded files are processed and retrieved in chats.</p>
+        <p className="text-sm text-fg-2">How uploaded files and memories are processed and retrieved in chats.</p>
       </header>
       <Card>
         <CardHeader title="Embeddings" description="Semantic search needs an embedding model. Without one, retrieval uses keyword search only." />
@@ -64,6 +64,49 @@ export function RagSettingsPage() {
           </Button>
         </div>
       </Card>
+      <MemorySettingsCard />
     </>
+  );
+}
+
+interface MemorySettings {
+  tokenBudget: number;
+  maxPerTurn: number;
+  maxPerUser: number;
+  consolidateAfterWrites: number;
+}
+
+function MemorySettingsCard() {
+  const qc = useQueryClient();
+  const settings = useQuery({ queryKey: ['admin', 'settings'], queryFn: () => api<{ memory: MemorySettings }>('/api/admin/settings') });
+  const [m, setM] = useState<MemorySettings | null>(null);
+  useEffect(() => setM(settings.data?.memory ?? null), [settings.data]);
+  if (!m) return null;
+  const set = <K extends keyof MemorySettings>(k: K, v: number) => setM({ ...m, [k]: v });
+  return (
+    <Card>
+      <CardHeader title="Memory" description="How much of what the AI remembers about each user goes into every chat. Uses the embedding model above when set." />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Memory budget per message (tokens)" hint="0 turns memory retrieval off."><Input type="number" min={0} max={8000} value={m.tokenBudget} onChange={(e) => set('tokenBudget', Number(e.target.value))} /></Field>
+        <Field label="Max memories per message"><Input type="number" min={0} max={100} value={m.maxPerTurn} onChange={(e) => set('maxPerTurn', Number(e.target.value))} /></Field>
+        <Field label="Max memories per user"><Input type="number" min={10} max={10000} value={m.maxPerUser} onChange={(e) => set('maxPerUser', Number(e.target.value))} /></Field>
+        <Field label="Tidy up after (changes)" hint="Merges duplicates and refreshes the summary in the background."><Input type="number" min={1} max={1000} value={m.consolidateAfterWrites} onChange={(e) => set('consolidateAfterWrites', Number(e.target.value))} /></Field>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <Button
+          onClick={async () => {
+            try {
+              await api('/api/admin/settings/memory', { method: 'PUT', body: m });
+              await qc.invalidateQueries({ queryKey: ['admin', 'settings'] });
+              toast.success('Memory settings saved');
+            } catch (e) {
+              toast.error('Couldn’t save', errorMessage(e));
+            }
+          }}
+        >
+          Save memory settings
+        </Button>
+      </div>
+    </Card>
   );
 }

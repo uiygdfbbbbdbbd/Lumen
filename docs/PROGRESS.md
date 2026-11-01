@@ -12,8 +12,9 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
 | 4 | Chat core: streaming, branching, search, styles, instructions, compare, palette, shortcuts, PWA | Done |
 | 5 | Files, RAG pipeline, projects, knowledge bases | Done |
 | 6 | Artifacts + sandboxed renderer + versioning + exports | Done |
-| 7 | Memory | Next |
-| 8–18 | Remaining steps | Not started |
+| 7 | Memory system + consolidation + UI | Done |
+| 8 | Built-in tools (web search/fetch, deep research, image gen, canvas, ask-user, charts) | Next |
+| 9–18 | Remaining steps | Not started |
 
 ## Known bugs / gaps
 - Passkeys (WebAuthn) and OAuth are not implemented yet (schema tables exist).
@@ -33,6 +34,11 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
   live renders, not stored screenshots. "Remix" of another user's private artifact isn't possible by design.
 - Artifacts: the Caddy CSP for the runtime and the `/a/*` embed headers are unverified here (no Docker); the
   runtime's `<meta>` CSP and sandbox checks are covered by E2E.
+- Memory: consolidation runs after N changes or on demand; the nightly run needs the scheduler (step 10). The
+  model-guided merge/contradiction pass isn't exercised by tests (the mock model can't return a custom JSON
+  plan); its parser ignores anything invalid, and deterministic dedupe + summary are tested.
+- Memory: secret detection is pattern-based (keys, tokens, passwords, card/ID/bank numbers); sensitive-category
+  avoidance relies on the model following the policy.
 - Docker is unavailable in the build sandbox: Compose stack, Mailpit, Testcontainers and sandbox tests are unverified here.
 
 ## Architecture notes
@@ -42,10 +48,13 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
 - Artifacts (web): `apps/web/src/features/artifacts/` — `ArtifactWorkspace` (split view + resizable panel),
   `ArtifactPanel` (versions, editor, exports, sharing), `renderers/*` (one per type), `ArtifactFrame` (sandbox
   bridge). The runtime itself lives in `apps/web/runtime/` and is built to `public/runtime/` by `build:runtime`.
+- Memory: `apps/server/src/services/memory/` (service), `services/tools/memory-tools.ts` (tools + policy),
+  `apps/web/src/features/memory/` (settings page, "Memory used" chip, tool rows).
 - Artifact format helpers (types, chart spec, slides, CSV, spreadsheet formulas) live in `@lumen/shared` and are
   used by both the server (exports) and the web renderers.
 
 ## Test status (last full run)
-- Server 233 (unit + integration + security), shared 142, llm 66, ui 16, web 44 (coverage gate ≥80% lines).
-- E2E (Playwright + axe): 36 passed, including the artifacts spec (sandbox isolation, bridge storage, Monaco
-  editing, diff/restore, runtime error → "Fix with AI", charts, spreadsheet, gallery, publish/embed/unpublish).
+- Server 272 (unit + integration + security), shared 142, llm 66, ui 16, web 48 (coverage gate ≥80% lines).
+- E2E (Playwright + axe): 41 passed, including artifacts (sandbox isolation, bridge storage, Monaco editing,
+  diff/restore, "Fix with AI", charts, spreadsheet, gallery, publish/embed/unpublish) and memory (AI writes,
+  "Memory used", settings edit/pin/undo, import review, tidy-up summary, pause, forget everything, per-chat opt-out).

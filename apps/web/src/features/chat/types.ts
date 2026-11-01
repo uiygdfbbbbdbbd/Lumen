@@ -13,7 +13,7 @@ export interface ConversationSummary {
 }
 
 export interface MessagePart {
-  type: 'reasoning' | 'tool_call' | 'tool_result' | 'text_segment' | 'citation' | 'attachment' | 'compaction';
+  type: 'reasoning' | 'tool_call' | 'tool_result' | 'text_segment' | 'citation' | 'attachment' | 'compaction' | 'memory';
   [k: string]: unknown;
 }
 
@@ -34,7 +34,7 @@ export interface ChatMessage {
 }
 
 export interface ConversationTree {
-  conversation: ConversationSummary & { instructions: string; settings: { thinkingEffort?: string; styleId?: string; temperature?: number }; activeLeafId: string | null; expiresAt: string | null };
+  conversation: ConversationSummary & { instructions: string; settings: { thinkingEffort?: string; styleId?: string; temperature?: number; useMemory?: boolean }; activeLeafId: string | null; expiresAt: string | null };
   messages: ChatMessage[];
   activePath: string[];
   compactions: { id: string; throughMessageId: string; summary: string; tokensBefore: number; tokensAfter: number; createdAt: string }[];

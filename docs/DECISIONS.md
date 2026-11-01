@@ -191,3 +191,28 @@ sandbox (step 9).
 Instead of server screenshots (which need a headless browser), gallery cards render the artifact itself at small
 scale once scrolled into view: SVG as an image, charts with the in-app renderer, HTML/React in the same sandbox
 without the bridge, text types as an excerpt.
+
+## D39. Memory is explicit entries the model manages with tools
+Memories are short sentences in a `memories` table (category, global or project scope, pinned, provenance).
+The model creates/updates/deletes them with `memory_write/search/update/delete`, guided by a policy in the
+system prompt (durable facts only; no secrets or sensitive categories unless asked). The server enforces the
+hard rules regardless of the model: secret detection (keys, tokens, passwords, card/ID/bank numbers) rejects
+the write, near-duplicates update the existing entry, and there is a per-user cap. "Remember…"/"forget…" work
+because the model maps them to these tools; there is no separate keyword parser.
+
+## D40. Retrieval: everything when small, ranked when large
+If a user's memories fit the per-turn budget they are all included. Otherwise memories are ranked by
+0.5·semantic (embedding cosine, when an embedding model is configured) + 0.35·keyword overlap + 0.1·recency,
+with a base weight for profile/preferences; pinned memories always come first. The chosen ids are stored on
+the response (`memory` part + stream event) so the UI can show "Memory used".
+
+## D41. Where memory is off, it is fully off
+Temporary chats, paused memory (user preference), chats with "don't use memory", and an admin-disabled
+`memory` feature all skip both retrieval and the memory tools, so nothing can be read or written. Users can
+still view, export and delete existing memories when the feature is disabled.
+
+## D42. Consolidation is deterministic first, model-guided second
+Duplicate merging is done in code (normalized text, word overlap, embedding similarity). The model is then
+asked for a JSON plan (merges, contradicted entries to remove, a summary); invalid or unsafe plans are ignored
+and a deterministic grouped summary is written instead. Pinned memories are never removed. A consolidation job
+is queued after N changes (admin setting); the nightly schedule arrives with the scheduler in step 10.
