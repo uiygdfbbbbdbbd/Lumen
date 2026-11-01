@@ -270,3 +270,16 @@ The filesystem driver writes to a temp file and renames it into place, and reads
 file being re-processed (e.g. metadata stripping) can be served at the same time without a size/bytes
 mismatch. File-serving routes also wrap storage streams so a mid-response failure aborts that response
 instead of reaching Fastify's error handler (which crashed the process when headers were already sent).
+
+## D51. The Compose stack stores files on a volume by default
+MinIO no longer publishes community container images, so the default stack can't depend on it. Files live on
+the `appdata` volume (filesystem driver); any S3-compatible service can be used by setting `STORAGE_DRIVER=s3`
+and `S3_*` in `.env`. Compose has its own env template (`.env.compose.example`) because the development
+`.env.example` uses dev-server URLs and log-only email. CI now runs `docker compose up --wait` and checks
+`/api/health` and the web root.
+
+## D52. Production parity in tests: E2E runs on Redis
+The E2E server now uses Redis (BullMQ jobs, Redis stream hub, event bus, rate limiter), like production.
+Running it against Redis found that BullMQ rejects job ids containing `:`, which silently stopped file
+processing, Deep Research and memory consolidation in Redis deployments; ids are now sanitized in the queue
+adapter and covered by a Redis integration test.

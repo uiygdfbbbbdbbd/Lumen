@@ -133,7 +133,18 @@ export function route<B = undefined, Q = undefined, P = undefined, R extends Aut
         c,
         ip: req.ip,
       });
-      if (reply.sent) return reply;
+      // The handler already responded. A streamed body may still be in flight (reply.sent stays false until it
+      // ends), and awaiting a returned `reply` (a thenable) yields undefined once the client disconnects, so
+      // "headers out" or "socket gone" also count as answered; sending again would write headers twice.
+      if (result === reply || reply.sent || reply.raw.headersSent || reply.raw.destroyed) {
+        if (!reply.sent && !reply.raw.writableEnded) {
+          await new Promise<void>((resolve) => {
+            reply.raw.once('finish', () => resolve());
+            reply.raw.once('close', () => resolve());
+          });
+        }
+        return undefined;
+      }
       if (result === undefined) return reply.code(204).send();
       return result;
     },

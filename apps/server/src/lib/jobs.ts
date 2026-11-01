@@ -97,6 +97,8 @@ export class MemoryJobQueue implements JobQueue {
   }
 }
 
+export const bullJobId = (id: string) => id.replace(/:/g, '__');
+
 /** BullMQ-backed queue: durable, multi-instance. Workers run here when `runWorkers` is true (else in apps/worker). */
 export class BullJobQueue implements JobQueue {
   private readonly queues = new Map<string, Queue>();
@@ -127,7 +129,8 @@ export class BullJobQueue implements JobQueue {
 
   async enqueue<T>(name: string, data: T, opts: EnqueueOptions = {}) {
     await this.queue(name).add(name, data, {
-      jobId: opts.jobId,
+      // BullMQ reserves ':' in custom ids (it separates key parts); keep ids readable and unique otherwise.
+      jobId: opts.jobId ? bullJobId(opts.jobId) : undefined,
       attempts: opts.attempts ?? 3,
       delay: opts.delayMs,
       backoff: { type: 'exponential', delay: 1000 },

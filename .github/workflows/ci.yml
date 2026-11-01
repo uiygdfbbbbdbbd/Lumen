@@ -66,6 +66,9 @@ jobs:
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
     strategy:
       fail-fast: false
       matrix:
@@ -76,7 +79,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client redis-tools
       - run: pnpm --filter @lumen/e2e exec playwright install --with-deps chromium firefox webkit
       - run: pnpm --filter @lumen/e2e exec playwright test --shard=${{ matrix.shard }}/2
         env: { E2E_ALL_BROWSERS: '1', CI: '1' }
@@ -122,3 +125,13 @@ jobs:
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@0.28.0
         with: { image-ref: 'lumen-server:ci', severity: 'HIGH,CRITICAL', exit-code: '1', ignore-unfixed: true }
+      - name: Self-host smoke test (docker compose up)
+        run: |
+          cp .env.compose.example .env
+          sed -i "s|^ENCRYPTION_KEYS=.*|ENCRYPTION_KEYS=$(openssl rand -base64 32)|; s|^SESSION_SECRET=.*|SESSION_SECRET=$(openssl rand -hex 32)|" .env
+          docker tag lumen-server:ci lumen-server && docker tag lumen-web:ci lumen-web
+          docker compose up -d --no-build --wait --wait-timeout 180
+          curl -fsS http://localhost/api/health
+          curl -fsS -o /dev/null http://localhost/
+      - if: failure()
+        run: docker compose logs --no-color | tail -200

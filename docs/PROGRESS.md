@@ -48,7 +48,10 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
   which aren't bundled yet). Output is text only (no plots).
 - Images: Stability/Replicate/ComfyUI adapters are tested against fake HTTP responses, not live services.
   Generated images also appear on the Files page (they're stored as files). No image-to-image editing yet.
-- Docker is unavailable in the build sandbox: Compose stack, Mailpit, Testcontainers and sandbox tests are unverified here.
+- Docker: the Compose stack was verified here (images build, all services healthy, first sign-up becomes super
+  admin, email via Mailpit, uploads stored on the volume, Caddy security headers). Building inside this sandbox
+  needed its proxy's CA (patched Dockerfile copies outside the repo); Docker Hub later rate-limited pulls, so the
+  final server image with the BullMQ fix wasn't rebuilt here (the fix is covered by Redis integration and E2E).
 
 ## Architecture notes
 - Server: Fastify 5, `route()` helper centralizes auth/permission/entitlement/CSRF/rate-limit/validation and
@@ -63,7 +66,7 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
   used by both the server (exports) and the web renderers.
 
 ## Test status (last full run)
-- Server 317 (unit + integration + security), shared 142, llm 71, ui 16, web 51 (coverage gate ≥80% lines).
-- E2E (Playwright + axe): 50 passed (incl. web search citations, ask-user, inline charts, Deep Research, image generation, Python/JS browser runner, suggested edits with per-change review), including artifacts (sandbox isolation, bridge storage, Monaco editing,
+- Server 319 (unit + integration + security), shared 142, llm 71, ui 16, web 51 (coverage gate ≥80% lines).
+- E2E (Playwright + axe, server on Redis): 50 passed (incl. web search citations, ask-user, inline charts, Deep Research, image generation, Python/JS browser runner, suggested edits with per-change review), including artifacts (sandbox isolation, bridge storage, Monaco editing,
   diff/restore, "Fix with AI", charts, spreadsheet, gallery, publish/embed/unpublish) and memory (AI writes,
   "Memory used", settings edit/pin/undo, import review, tidy-up summary, pause, forget everything, per-chat opt-out).

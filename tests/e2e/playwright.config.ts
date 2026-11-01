@@ -19,6 +19,8 @@ const serverEnv = {
   ALLOW_PRIVATE_PROVIDER_URLS: 'true',
   ALLOW_PRIVATE_FETCH: 'true',
   RATE_LIMIT_MULTIPLIER: '20',
+  // Same moving parts as production: BullMQ jobs, Redis stream hub, event bus and rate limits.
+  REDIS_URL: process.env.E2E_REDIS_URL ?? 'redis://localhost:6379/14',
 };
 
 export default defineConfig({

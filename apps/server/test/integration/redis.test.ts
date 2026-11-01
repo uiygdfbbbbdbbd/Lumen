@@ -30,3 +30,22 @@ describe('RedisRateLimiter', () => {
     expect((await rl.hit('k', 1, 500, 1)).remaining).toBe(0);
   });
 });
+
+describe('BullJobQueue', () => {
+  it('runs jobs whose ids use the app’s "kind:id" format, once per id', async (ctx) => {
+    if (!available) return ctx.skip();
+    const { BullJobQueue } = await import('../../src/lib/jobs.js');
+    const q = new BullJobQueue({ url }, true, undefined, `lumen-test-${Date.now()}`);
+    const seen: string[] = [];
+    q.register<{ v: string }>('test.job', async ({ v }) => {
+      seen.push(v);
+    });
+    await q.enqueue('test.job', { v: 'a' }, { jobId: 'file:123' });
+    await q.enqueue('test.job', { v: 'dup' }, { jobId: 'file:123' });
+    await q.enqueue('test.job', { v: 'b' }, { jobId: 'memory-consolidate:u1' });
+    const deadline = Date.now() + 10_000;
+    while (seen.length < 2 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
+    await q.close();
+    expect(seen.sort()).toEqual(['a', 'b']);
+  });
+});
