@@ -38,7 +38,8 @@ function useFollowStreaming(conversationId: string | undefined, messages: ChatMe
             apply(messageId, e);
             if (e.type === 'done' || e.type === 'error') {
               void (async () => {
-                if (conversationId) await qc.invalidateQueries({ queryKey: convKeys.tree(conversationId) });
+                // A follower started before navigating to a new chat has no conversation id yet, so refresh by prefix.
+                await qc.invalidateQueries({ queryKey: conversationId ? convKeys.tree(conversationId) : ['conversation'] });
                 await qc.invalidateQueries({ queryKey: ['conversations'] });
                 await qc.invalidateQueries({ queryKey: ['usage'] });
                 clear(messageId);

@@ -197,7 +197,8 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   const retrieval = new RetrievalService(db, embeddings);
   const fileContext = new FileContextBuilder(db, storage, settings, retrieval);
   const projects = new ProjectService(db, storage, audit, now);
-  const filesSvc = new FileService(db, storage, settings, jobs, embeddings, scanner, () => projects, log, now, o.urlFetch);
+  const urlFetch = o.urlFetch ?? (config.ALLOW_PRIVATE_FETCH ? { allowPrivate: true } : {});
+  const filesSvc = new FileService(db, storage, settings, jobs, embeddings, scanner, () => projects, log, now, urlFetch);
   registerExporters(users, db, storage);
   const artifactsSvc = new ArtifactService(db, projects, audit, catalog, providers, entitlements, now);
   const tools = new ToolRegistry().register(calculatorTool).register(datetimeTool).register(fileSearchTool(retrieval));
@@ -205,7 +206,7 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   const conversationsSvc = new ConversationService(db, bus, now);
   const memorySvc = new MemoryService({ db, settings, embeddings, projects, catalog, providers, entitlements, jobs, log, now });
   for (const t of memoryTools(memorySvc)) tools.register(t);
-  const web = new WebService(settings, box, log, o.urlFetch, Date.now, o.externalFetch);
+  const web = new WebService(settings, box, log, urlFetch, Date.now, o.externalFetch);
   for (const t of [...webTools(web), ...utilityTools(settings, o.externalFetch), ...interactiveTools()]) tools.register(t);
   tools.register(conversationSearchTool(conversationsSvc));
   const runner = new GenerationRunner({ db, hub, bus, providers, catalog, entitlements, tools, rateLimiter, log, now });

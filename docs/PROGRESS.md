@@ -13,7 +13,7 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
 | 5 | Files, RAG pipeline, projects, knowledge bases | Done |
 | 6 | Artifacts + sandboxed renderer + versioning + exports | Done |
 | 7 | Memory system + consolidation + UI | Done |
-| 8 | Built-in tools (web search/fetch, deep research, image gen, canvas, ask-user, charts) | Next |
+| 8 | Built-in tools (web search/fetch, deep research, image gen, canvas, ask-user, charts) | In progress — web search/fetch, Deep Research, weather/units/currency, ask-user, inline charts/diagrams done; image generation, client code interpreter and canvas next |
 | 9–18 | Remaining steps | Not started |
 
 ## Known bugs / gaps
@@ -39,6 +39,10 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
   plan); its parser ignores anything invalid, and deterministic dedupe + summary are tested.
 - Memory: secret detection is pattern-based (keys, tokens, passwords, card/ID/bank numbers); sensitive-category
   avoidance relies on the model following the policy.
+- Web search: only the SearXNG adapter is exercised end to end (against a fake SearXNG); Brave/Tavily/Serper/Bing
+  adapters are unit-tested against recorded response shapes, not live APIs. Weather/currency hit public APIs
+  in production and fakes in tests.
+- Deep Research: interrupted runs restart from scratch; runs aren't resumable mid-step.
 - Docker is unavailable in the build sandbox: Compose stack, Mailpit, Testcontainers and sandbox tests are unverified here.
 
 ## Architecture notes
@@ -54,7 +58,7 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
   used by both the server (exports) and the web renderers.
 
 ## Test status (last full run)
-- Server 272 (unit + integration + security), shared 142, llm 66, ui 16, web 48 (coverage gate ≥80% lines).
-- E2E (Playwright + axe): 41 passed, including artifacts (sandbox isolation, bridge storage, Monaco editing,
+- Server 306 (unit + integration + security), shared 142, llm 66, ui 16, web 48 (coverage gate ≥80% lines).
+- E2E (Playwright + axe): 45 passed (incl. web search citations, ask-user, inline charts, Deep Research), including artifacts (sandbox isolation, bridge storage, Monaco editing,
   diff/restore, "Fix with AI", charts, spreadsheet, gallery, publish/embed/unpublish) and memory (AI writes,
   "Memory used", settings edit/pin/undo, import review, tidy-up summary, pause, forget everything, per-chat opt-out).

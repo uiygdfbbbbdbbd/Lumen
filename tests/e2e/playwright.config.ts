@@ -17,6 +17,7 @@ const serverEnv = {
   STORAGE_FS_ROOT: '/tmp/lumen-e2e-storage',
   LOG_LEVEL: 'warn',
   ALLOW_PRIVATE_PROVIDER_URLS: 'true',
+  ALLOW_PRIVATE_FETCH: 'true',
   RATE_LIMIT_MULTIPLIER: '20',
 };
 
@@ -45,6 +46,7 @@ export default defineConfig({
   ],
   webServer: [
     { command: 'node support/mail-sink.mjs', url: 'http://127.0.0.1:8025/api/v1/messages', reuseExistingServer: true },
+    { command: 'node support/web-sink.mjs', url: 'http://127.0.0.1:4020/search?q=x&format=json', reuseExistingServer: true },
     {
       command: 'pnpm --filter @lumen/llm exec tsx src/mock/cli.ts',
       url: 'http://127.0.0.1:4010/v1/models',

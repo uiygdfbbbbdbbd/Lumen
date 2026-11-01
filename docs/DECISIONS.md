@@ -216,3 +216,25 @@ Duplicate merging is done in code (normalized text, word overlap, embedding simi
 asked for a JSON plan (merges, contradicted entries to remove, a summary); invalid or unsafe plans are ignored
 and a deterministic grouped summary is written instead. Pinned memories are never removed. A consolidation job
 is queued after N changes (admin setting); the nightly schedule arrives with the scheduler in step 10.
+
+## D43. Web search is pluggable; web_fetch is limited to known links
+Search goes through one admin-chosen provider (SearXNG by default for self-hosters; Brave, Tavily, Serper, Bing
+adapters). Keys are encrypted and write-only. Page fetches use the SSRF-safe client, respect robots.txt,
+cap size and cache results. `web_fetch` only opens URLs the user wrote or that a search returned in the same
+response, so injected page text can't make the model send data to an arbitrary address. Page text is
+labelled as untrusted in the prompt. Search/fetch results become numbered web citations after file citations.
+
+## D44. Deep Research is a job, not a long chat turn
+Runs are rows in `research_runs` processed by the job queue (BullMQ with Redis, in-process otherwise), so they
+survive closing the page. Progress streams over the same message stream as chat; Stop uses the same button.
+Planning falls back to deterministic query variants if the model doesn't return JSON. Source selection
+interleaves queries' results, caps pages per domain and drops blocked/duplicate/empty results. Interrupted
+runs restart from the beginning on boot (each step is cheap to redo; partial state is not trusted).
+
+## D45. ask_user ends the turn
+Tools can declare `endsTurn`; after `ask_user` runs the generation stops and the user's click (or typed
+answer) is sent as their next message. No extra model call is spent waiting.
+
+## D46. ALLOW_PRIVATE_FETCH is for development and tests only
+Production keeps web/knowledge fetches off private networks. The flag lets dev/E2E environments fetch local
+test pages; cloud metadata addresses stay blocked either way.

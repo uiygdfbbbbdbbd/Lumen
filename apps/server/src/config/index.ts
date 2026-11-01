@@ -63,6 +63,8 @@ export const envSchema = z
     CAPTCHA_PROVIDER: z.enum(['none', 'turnstile', 'hcaptcha']).default('none'),
     CAPTCHA_SECRET: z.string().optional(),
     ALLOW_PRIVATE_PROVIDER_URLS: bool.default(false),
+    /** Let web/knowledge fetches reach private addresses. Development and tests only; metadata IPs stay blocked. */
+    ALLOW_PRIVATE_FETCH: bool.default(false),
     /** clamd host for upload virus scanning (optional). */
     CLAMAV_HOST: z.string().optional(),
     CLAMAV_PORT: z.coerce.number().int().default(3310),
