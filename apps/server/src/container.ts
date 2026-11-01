@@ -48,6 +48,7 @@ import { WebService } from './services/web/web.service.js';
 import { ResearchService } from './services/research/research.service.js';
 import { ImageService } from './services/images/image.service.js';
 import { imageTools } from './services/tools/image-tools.js';
+import { codeTools } from './services/tools/code-tools.js';
 import { webTools } from './services/tools/web-tools.js';
 import { utilityTools } from './services/tools/utility-tools.js';
 import { interactiveTools } from './services/tools/interactive-tools.js';
@@ -212,7 +213,7 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   const web = new WebService(settings, box, log, urlFetch, Date.now, o.externalFetch);
   const images = new ImageService(db, catalog, providers, entitlements, filesSvc, settings, log);
   for (const t of imageTools(images, entitlements)) tools.register(t);
-  for (const t of [...webTools(web), ...utilityTools(settings, o.externalFetch), ...interactiveTools()]) tools.register(t);
+  for (const t of [...webTools(web), ...utilityTools(settings, o.externalFetch), ...interactiveTools(), ...codeTools()]) tools.register(t);
   tools.register(conversationSearchTool(conversationsSvc));
   const runner = new GenerationRunner({ db, hub, bus, providers, catalog, entitlements, tools, rateLimiter, log, now });
   const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now, files: filesSvc, fileContext, projects, memory: memorySvc, web, images });

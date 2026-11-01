@@ -246,3 +246,13 @@ pickers and chat defaults and listed via `/api/models?kind=image`. Generated pix
 file service (quota, EXIF stripping, sandboxed serving) and described by `generated_images` rows. The daily cap
 is charged up front and refunded for anything not produced. Variations re-run the prompt with new seeds,
 which works with every provider (not every API supports image-to-image variations).
+
+## D48. The browser code runner is a sandboxed frame + throwaway workers
+For accounts without Code Mode, `run_code` shows the code with a Run button; nothing runs until the user
+clicks. Code runs in `/code-runner.html` inside `<iframe sandbox="allow-scripts">` (opaque origin: no cookies,
+storage or app DOM) in a fresh classic Web Worker per run, killed on timeout or Stop. JavaScript has fetch,
+XHR, WebSocket and importScripts removed; Python is Pyodide (standard library only), self-hosted under
+`/pyodide/` (copied from the npm package at build) and loaded with a dynamic `import()` — module workers
+can't start from blob URLs in an opaque-origin frame. Its CSP allows connections only to our own server
+(to load Pyodide), and those requests carry no credentials. The tool ends the model's turn; the user can
+share the output back as a message.

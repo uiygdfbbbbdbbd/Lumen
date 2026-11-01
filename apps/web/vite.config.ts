@@ -3,8 +3,24 @@ import react from '@vitejs/plugin-react';
 import tailwind from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/** The sandboxed code runner has an opaque origin, so the Pyodide files it loads need CORS headers. */
+const runnerCors = {
+  name: 'lumen-runner-cors',
+  configureServer(server: { middlewares: { use: (fn: (req: { url?: string }, res: { setHeader: (k: string, v: string) => void }, next: () => void) => void) => void } }) {
+    server.middlewares.use((req, res, next) => {
+      if (req.url?.startsWith('/pyodide/')) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      }
+      next();
+    });
+  },
+};
+
 export default defineConfig({
   plugins: [
+    { ...runnerCors },
+    { ...runnerCors, name: 'lumen-runner-cors-preview', configurePreviewServer: runnerCors.configureServer, configureServer: undefined },
     react(),
     tailwind(),
     // Installable PWA: precaches the app shell; API calls always go to the network.

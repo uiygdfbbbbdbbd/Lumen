@@ -15,3 +15,4 @@ src-tauri/gen
 .DS_Store
 apps/web/public/runtime/
 dump.rdb
+apps/web/public/pyodide/

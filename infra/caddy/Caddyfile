@@ -27,6 +27,20 @@
 		-Server
 	}
 
+	# The browser code runner (sandboxed, opaque origin) loads Pyodide from here, so it needs CORS.
+	@pyodide path /pyodide/*
+	header @pyodide {
+		Access-Control-Allow-Origin "*"
+		Cross-Origin-Resource-Policy "cross-origin"
+		Cache-Control "public, max-age=604800"
+	}
+	@runner path /code-runner.html /runner/*
+	header @runner {
+		Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' blob:; worker-src blob:; connect-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
 	# Published artifacts (/a/*) can be embedded on other sites; everything else refuses framing.
 	@public_artifact path /a/*
 	header @public_artifact {
@@ -37,7 +51,7 @@
 		-Server
 	}
 
-	@app not path /artifact-runtime.html /runtime/* /a/*
+	@app not path /artifact-runtime.html /runtime/* /a/* /code-runner.html /runner/*
 	header @app {
 		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss:; frame-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 		Referrer-Policy "strict-origin-when-cross-origin"

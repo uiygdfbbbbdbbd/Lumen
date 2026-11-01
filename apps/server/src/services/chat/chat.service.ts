@@ -23,6 +23,7 @@ import { HISTORY_GUIDANCE, MEMORY_GUIDANCE, MEMORY_TOOLS } from '../tools/memory
 import { INTERACTIVE_GUIDANCE, INTERACTIVE_TOOLS } from '../tools/interactive-tools.js';
 import { WEB_GUIDANCE, WEB_TOOLS } from '../tools/web-tools.js';
 import { IMAGE_GUIDANCE } from '../tools/image-tools.js';
+import { CODE_GUIDANCE } from '../tools/code-tools.js';
 import type { WebService } from '../web/web.service.js';
 import type { ImageService } from '../images/image.service.js';
 import type { MemoryService } from '../memory/memory.service.js';
@@ -121,6 +122,11 @@ export class ChatService {
     if (ent.features.imageGeneration.allowed && (await this.d.images.models(user)).some((m) => m.available)) {
       out.tools.push('generate_image');
       out.guidance.push(IMAGE_GUIDANCE);
+    }
+    // The browser runner is the fallback for accounts without Code Mode (step 9 adds the real sandbox).
+    if (ent.features.clientCodeInterpreter.allowed) {
+      out.tools.push('run_code');
+      out.guidance.push(CODE_GUIDANCE);
     }
     if (ent.features.webSearch.allowed) {
       out.tools.push(...((await this.d.web.configured()) ? WEB_TOOLS : ['web_fetch']));

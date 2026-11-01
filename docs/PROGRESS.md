@@ -13,7 +13,7 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
 | 5 | Files, RAG pipeline, projects, knowledge bases | Done |
 | 6 | Artifacts + sandboxed renderer + versioning + exports | Done |
 | 7 | Memory system + consolidation + UI | Done |
-| 8 | Built-in tools (web search/fetch, deep research, image gen, canvas, ask-user, charts) | In progress — web search/fetch, Deep Research, weather/units/currency, ask-user, inline charts/diagrams, image generation done; client code interpreter and canvas next |
+| 8 | Built-in tools (web search/fetch, deep research, image gen, canvas, ask-user, charts) | In progress — web search/fetch, Deep Research, weather/units/currency, ask-user, inline charts/diagrams, image generation, browser code runner done; canvas co-editing next |
 | 9–18 | Remaining steps | Not started |
 
 ## Known bugs / gaps
@@ -43,6 +43,8 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
   adapters are unit-tested against recorded response shapes, not live APIs. Weather/currency hit public APIs
   in production and fakes in tests.
 - Deep Research: interrupted runs restart from scratch; runs aren't resumable mid-step.
+- Browser code runner: Python has only the standard library (no numpy/pandas — those need Pyodide packages,
+  which aren't bundled yet). Output is text only (no plots).
 - Images: Stability/Replicate/ComfyUI adapters are tested against fake HTTP responses, not live services.
   Generated images also appear on the Files page (they're stored as files). No image-to-image editing yet.
 - Docker is unavailable in the build sandbox: Compose stack, Mailpit, Testcontainers and sandbox tests are unverified here.
@@ -61,6 +63,6 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
 
 ## Test status (last full run)
 - Server 312 (unit + integration + security), shared 142, llm 71, ui 16, web 48 (coverage gate ≥80% lines).
-- E2E (Playwright + axe): 47 passed (incl. web search citations, ask-user, inline charts, Deep Research, image generation), including artifacts (sandbox isolation, bridge storage, Monaco editing,
+- E2E (Playwright + axe): 49 passed (incl. web search citations, ask-user, inline charts, Deep Research, image generation, Python/JS browser runner), including artifacts (sandbox isolation, bridge storage, Monaco editing,
   diff/restore, "Fix with AI", charts, spreadsheet, gallery, publish/embed/unpublish) and memory (AI writes,
   "Memory used", settings edit/pin/undo, import review, tidy-up summary, pause, forget everything, per-chat opt-out).

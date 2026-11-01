@@ -15,7 +15,7 @@ test.afterAll(() => page.context().close());
 
 test('generate, vary and delete images on the Images page', async () => {
   await page.getByRole('link', { name: 'Images' }).click();
-  await expect(page.getByRole('heading', { name: 'Images' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Images', exact: true })).toBeVisible();
   await page.getByLabel('Describe an image').fill('A lighthouse at dusk');
   await page.getByLabel('Aspect ratio').selectOption('16:9');
   await page.getByLabel('Images', { exact: true }).selectOption('2');
