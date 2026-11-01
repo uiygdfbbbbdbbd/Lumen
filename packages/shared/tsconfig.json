@@ -1,0 +1,1 @@
+{ "extends": "@lumen/tsconfig/base.json", "compilerOptions": { "outDir": "dist", "rootDir": ".", "customConditions": ["@lumen/source"] }, "include": ["src", "test"] }

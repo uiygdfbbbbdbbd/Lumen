@@ -1,0 +1,5 @@
+{
+  "extends": "@lumen/tsconfig/base.json",
+  "compilerOptions": { "outDir": "dist", "rootDir": ".", "customConditions": ["@lumen/source"], "types": ["node"], "jsx": "react-jsx" },
+  "include": ["src", "test", "drizzle.config.ts", "vitest.config.ts"]
+}

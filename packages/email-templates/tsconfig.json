@@ -1,0 +1,1 @@
+{ "extends": "@lumen/tsconfig/base.json", "compilerOptions": { "outDir": "dist", "rootDir": ".", "jsx": "react-jsx", "customConditions": ["@lumen/source"], "types": ["node"] }, "include": ["src", "test"] }

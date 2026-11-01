@@ -1,0 +1,30 @@
+{
+  "name": "lumen",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Lumen — a free, open, self-hostable AI chat platform",
+  "license": "MIT",
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test:unit",
+    "test:unit": "turbo run test:unit",
+    "test:int": "turbo run test:int --concurrency=1",
+    "test:e2e": "pnpm --filter @lumen/e2e test",
+    "test:security": "pnpm --filter @lumen/server test:security && node scripts/scan-secrets.mjs",
+    "test:load": "node scripts/run-k6.mjs",
+    "test:all": "pnpm typecheck && pnpm test:unit && pnpm test:int && pnpm test:security && pnpm test:e2e",
+    "db:migrate": "pnpm --filter @lumen/server db:migrate",
+    "db:seed": "pnpm --filter @lumen/server db:seed",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.11.10",
+    "typescript": "5.9.3"
+  }
+}
