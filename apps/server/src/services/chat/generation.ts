@@ -28,6 +28,8 @@ export interface GenerationJob {
   thinking: 'off' | 'low' | 'medium' | 'high' | undefined;
   temperature: number | undefined;
   toolNames: string[];
+  /** Attachment/knowledge context computed for this turn. */
+  files?: { citations: import('../files/context.js').Citation[]; images: import('@lumen/llm').ContentPart[]; scope: { fileIds: string[]; projectId: string | null } | null };
   onFinished?: (ok: boolean) => Promise<void> | void;
 }
 
@@ -207,6 +209,13 @@ export class GenerationRunner {
       await publish({ type: 'start', messageId: job.assistant.id, model: { id: job.model.model.id, name: job.model.model.displayName } });
       const compaction = await this.maybeCompact(job, publish);
       const history: ChatMessage[] = [{ role: 'system', content: job.systemPrompt }, ...toChatMessages(job.path, compaction)];
+      // Images attached to the newest user message go to vision models as content parts.
+      const lastUser = [...history].reverse().find((m) => m.role === 'user');
+      if (lastUser && job.files?.images.length) lastUser.content = [{ type: 'text', text: typeof lastUser.content === 'string' ? lastUser.content : '' }, ...job.files.images];
+      if (job.files?.citations.length) {
+        await publish({ type: 'citations', items: job.files.citations });
+        parts.push(...job.files.citations.map((c) => ({ type: 'citation' as const, ...c })));
+      }
       const candidates = await this.candidates(job);
       let firstError: unknown = null;
       const toolDefs = job.toolNames.length && job.model.model.capabilities.tools ? this.d.tools.definitions(job.toolNames) : [];
@@ -256,7 +265,7 @@ export class GenerationRunner {
             finishReason = roundFinish;
             if (roundFinish === 'content_filter') throw new LlmError('content_filter', 'Blocked by provider');
             if (!calls.length || round === MAX_TOOL_ROUNDS) {
-              if (parts.length) parts.push({ type: 'text_segment', round, text: roundText });
+              if (parts.some((p) => p.type === 'tool_call')) parts.push({ type: 'text_segment', round, text: roundText });
               break;
             }
             if (roundText) parts.push({ type: 'text_segment', round, text: roundText });
@@ -264,7 +273,7 @@ export class GenerationRunner {
             for (const call of calls) {
               parts.push({ type: 'tool_call', round, id: call.id, name: call.name, arguments: call.arguments });
               await publish({ type: 'tool_call', id: call.id, name: call.name, arguments: call.arguments });
-              const r = await this.d.tools.execute(call.name, call.arguments, { user: job.user, conversationId: job.conversationId, signal: controller.signal });
+              const r = await this.d.tools.execute(call.name, call.arguments, { user: job.user, conversationId: job.conversationId, signal: controller.signal, fileScope: job.files?.scope ?? undefined });
               parts.push({ type: 'tool_result', round, id: call.id, name: call.name, content: r.content, isError: r.isError });
               await publish({ type: 'tool_result', id: call.id, name: call.name, content: r.content, isError: r.isError });
               convo.push({ role: 'tool', toolCallId: call.id, name: call.name, content: r.content, isError: r.isError });
@@ -282,7 +291,7 @@ export class GenerationRunner {
           const next = candidates[ci + 1];
           firstError ??= err;
           // Only fall back if nothing was streamed yet, otherwise the user would see two different answers.
-          if (cls.retryable && next && !content && !parts.length) {
+          if (cls.retryable && next && !content && !parts.some((p) => p.type === 'tool_call')) {
             await publish({ type: 'fallback', from: m.model.displayName, to: next.model.displayName, reason: cls.message });
             continue;
           }

@@ -90,10 +90,17 @@ export interface ProviderConfig {
   fetch?: typeof fetch;
 }
 
+export interface EmbeddingResult {
+  vectors: number[][];
+  inputTokens: number;
+}
+
 export interface ProviderAdapter {
   readonly type: ProviderType;
   stream(req: ChatRequest, signal?: AbortSignal): AsyncIterable<StreamEvent>;
   listModels(signal?: AbortSignal): Promise<ModelInfo[]>;
+  /** Text embeddings. Providers without an embeddings API throw LlmError('invalid_request'). */
+  embed(model: string, inputs: string[], signal?: AbortSignal): Promise<EmbeddingResult>;
 }
 
 /** Errors are normalized so the UI can show "rate limited", "quota", "provider down" etc. */

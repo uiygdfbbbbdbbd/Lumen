@@ -43,6 +43,18 @@ export const settingSchemas = {
   features: z.partialRecord(z.enum(FEATURES), z.boolean()),
   maintenance: z.object({ enabled: z.boolean(), readOnly: z.boolean(), message: z.string().max(1000) }),
   legal: z.object({ tosVersion: z.string().max(40), cookieConsent: z.boolean() }),
+  rag: z.object({
+    /** Model (id or alias) used for embeddings. Null = lexical search only. */
+    embeddingModelId: z.string().max(200).nullable(),
+    chunkTokens: z.number().int().min(100).max(4000),
+    overlapTokens: z.number().int().min(0).max(1000),
+    /** Attachments whose total extracted text is below this many tokens are inlined in full. */
+    inlineTokenLimit: z.number().int().min(0).max(200_000),
+    topK: z.number().int().min(1).max(50),
+    stripImageMetadata: z.boolean(),
+    maxArchiveEntries: z.number().int().min(1).max(100_000),
+    maxArchiveBytes: z.number().int().min(1024).max(10 * 1024 ** 3),
+  }),
 } as const;
 
 export type SettingKey = keyof typeof settingSchemas;
@@ -90,4 +102,14 @@ export const DEFAULT_SETTINGS: AllSettings = {
   features: {},
   maintenance: { enabled: false, readOnly: false, message: '' },
   legal: { tosVersion: '2026-11-01', cookieConsent: false },
+  rag: {
+    embeddingModelId: null,
+    chunkTokens: 500,
+    overlapTokens: 80,
+    inlineTokenLimit: 8000,
+    topK: 8,
+    stripImageMetadata: true,
+    maxArchiveEntries: 2000,
+    maxArchiveBytes: 500 * 1024 * 1024,
+  },
 };

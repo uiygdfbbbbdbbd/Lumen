@@ -1,6 +1,6 @@
 import { joinUrl, jsonHeaders, request } from '../http.js';
 import { parseSse, parseToolArguments } from '../streams.js';
-import { LlmError, type ChatMessage, type ChatRequest, type FinishReason, type ModelInfo, type ProviderAdapter, type ProviderConfig, type StreamEvent } from '../types.js';
+import { LlmError, type ChatMessage, type EmbeddingResult, type ChatRequest, type FinishReason, type ModelInfo, type ProviderAdapter, type ProviderConfig, type StreamEvent } from '../types.js';
 
 const THINKING_BUDGET = { low: 2048, medium: 8192, high: 24576 } as const;
 const API_VERSION = '2023-06-01';
@@ -138,6 +138,10 @@ export class AnthropicAdapter implements ProviderAdapter {
       }
     }
     yield { type: 'finish', reason: finish };
+  }
+
+  async embed(): Promise<EmbeddingResult> {
+    throw new LlmError('invalid_request', 'Anthropic does not offer an embeddings API. Choose another embedding provider.');
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {

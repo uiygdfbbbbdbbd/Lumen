@@ -29,6 +29,7 @@
     "@lumen/email-templates": "workspace:*",
     "@lumen/llm": "workspace:*",
     "@lumen/shared": "workspace:*",
+    "@mozilla/readability": "^0.6.0",
     "@node-rs/argon2": "^2.2.2",
     "@simplewebauthn/server": "^14.0.3",
     "@zxcvbn-ts/core": "^4.2.0",
@@ -38,8 +39,11 @@
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.7",
     "fflate": "^0.8.3",
+    "file-type": "^22.3.0",
     "ioredis": "^6.0.0",
     "ipaddr.js": "^2.5.0",
+    "linkedom": "^0.18.15",
+    "mammoth": "^1.13.0",
     "nodemailer": "^7.0.13",
     "otpauth": "^9.5.2",
     "pino": "^10.4.0",
@@ -47,6 +51,7 @@
     "qrcode": "^1.5.4",
     "sharp": "^0.35.5",
     "undici": "^8.12.3",
+    "unpdf": "^2.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

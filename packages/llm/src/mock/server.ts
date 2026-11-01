@@ -9,11 +9,29 @@ export interface MockProvider {
   close(): Promise<void>;
 }
 
+/**
+ * Deterministic "semantic" embedding: hashed bag of lowercase words (and their 4-char prefixes) into 64 dims,
+ * L2-normalized. Texts sharing words get high cosine similarity, which is enough to test retrieval.
+ */
+export function mockEmbedding(text: string, dims = 64): number[] {
+  const v = new Array<number>(dims).fill(0);
+  for (const w of text.toLowerCase().match(/[a-z0-9]+/g) ?? []) {
+    for (const token of [w, w.slice(0, 4)]) {
+      let h = 2166136261;
+      for (let i = 0; i < token.length; i++) h = Math.imul(h ^ token.charCodeAt(i), 16777619);
+      v[(h >>> 0) % dims]! += token === w ? 1 : 0.5;
+    }
+  }
+  const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
+  return v.map((x) => x / norm);
+}
+
 export const MOCK_MODELS = [
   { id: 'mock-fast', name: 'Mock Fast', context: 32000 },
   { id: 'mock-smart', name: 'Mock Smart', context: 200000 },
   { id: 'mock-vision', name: 'Mock Vision', context: 128000 },
   { id: 'mock-reasoning', name: 'Mock Reasoning', context: 128000 },
+  { id: 'mock-embed', name: 'Mock Embed', context: 8192 },
 ];
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- wire formats of five providers
@@ -180,6 +198,15 @@ export async function startMockProvider(opts: { port?: number; host?: string; ap
         }
         return json(404, { error: { message: 'not found' } });
       }
+
+      // Embeddings endpoints (all five dialects).
+      if (path === '/v1/embeddings' || path === '/embeddings') {
+        const input = (Array.isArray(body.input) ? body.input : [body.input]) as string[];
+        return json(200, { object: 'list', data: input.map((t, index) => ({ object: 'embedding', index, embedding: mockEmbedding(String(t)) })), usage: { prompt_tokens: input.join(' ').length >> 2 } });
+      }
+      if (path === '/api/embed') return json(200, { embeddings: ((Array.isArray(body.input) ? body.input : [body.input]) as string[]).map((t) => mockEmbedding(String(t))) });
+      if (path === '/v2/embed') return json(200, { embeddings: { float: (body.texts as string[]).map((t) => mockEmbedding(t)) } });
+      if (path.endsWith(':batchEmbedContents')) return json(200, { embeddings: (body.requests as Json[]).map((r) => ({ values: mockEmbedding(String(r.content?.parts?.[0]?.text ?? '')) })) });
 
       let model = String(body.model ?? '');
       if (kind === 'gemini') model = decodeURIComponent(path.split('/models/')[1]?.split(':')[0] ?? '');

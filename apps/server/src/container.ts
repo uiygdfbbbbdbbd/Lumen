@@ -31,6 +31,16 @@ import { ChatService } from './services/chat/chat.service.js';
 import { StyleService } from './services/chat/styles.service.js';
 import { ToolRegistry } from './services/tools/registry.js';
 import { calculatorTool, datetimeTool } from './services/tools/calculator.js';
+import { fileSearchTool } from './services/tools/file-search.js';
+import { BullJobQueue, MemoryJobQueue, type JobQueue } from './lib/jobs.js';
+import { ClamdScanner, noScanner, type VirusScanner } from './lib/clamav.js';
+import { EmbeddingService } from './services/files/embedding.service.js';
+import { RetrievalService } from './services/files/retrieval.service.js';
+import { FileContextBuilder } from './services/files/context.js';
+import { FileService } from './services/files/file.service.js';
+import { ProjectService } from './services/projects/project.service.js';
+import { registerExporters } from './services/users/exporters.js';
+import type { SsrfOptions } from './lib/ssrf.js';
 
 export interface ApiKeyAuthenticator {
   authenticate(token: string, ip: string): Promise<AuthContext>;
@@ -49,6 +59,10 @@ export interface ContainerOverrides {
   now?: () => Date;
   hub?: StreamHub;
   bus?: EventBus;
+  jobs?: JobQueue;
+  scanner?: VirusScanner;
+  /** Test hook: SSRF options for knowledge-base URL fetching. */
+  urlFetch?: SsrfOptions;
 }
 
 export interface Container {
@@ -82,6 +96,12 @@ export interface Container {
   runner: GenerationRunner;
   chat: ChatService;
   styles: StyleService;
+  jobs: JobQueue;
+  embeddings: EmbeddingService;
+  retrieval: RetrievalService;
+  fileContext: FileContextBuilder;
+  files: FileService;
+  projects: ProjectService;
   apiKeyAuth: ApiKeyAuthenticator | null;
   now: () => Date;
   close(): Promise<void>;
@@ -155,10 +175,18 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   const hub = o.hub ?? (redis && config.REDIS_URL ? new RedisStreamHub(redis, () => new Redis(config.REDIS_URL!)) : new MemoryStreamHub());
   const bus = o.bus ?? (redis && config.REDIS_URL ? new RedisEventBus(redis, new Redis(config.REDIS_URL)) : new MemoryEventBus());
   const concurrency = redis ? new RedisConcurrencyLimiter(redis) : new MemoryConcurrencyLimiter();
-  const tools = new ToolRegistry().register(calculatorTool).register(datetimeTool);
+  const jobs = o.jobs ?? (redis && config.REDIS_URL ? new BullJobQueue({ url: config.REDIS_URL }, config.RUN_WORKERS, log) : new MemoryJobQueue(log));
+  const scanner = o.scanner ?? (config.CLAMAV_HOST ? new ClamdScanner(config.CLAMAV_HOST, config.CLAMAV_PORT) : noScanner);
+  const embeddings = new EmbeddingService(db, settings, catalog, providers);
+  const retrieval = new RetrievalService(db, embeddings);
+  const fileContext = new FileContextBuilder(db, storage, settings, retrieval);
+  const projects = new ProjectService(db, storage, audit, now);
+  const filesSvc = new FileService(db, storage, settings, jobs, embeddings, scanner, () => projects, log, now, o.urlFetch);
+  registerExporters(users, db, storage);
+  const tools = new ToolRegistry().register(calculatorTool).register(datetimeTool).register(fileSearchTool(retrieval));
   const conversationsSvc = new ConversationService(db, bus, now);
   const runner = new GenerationRunner({ db, hub, bus, providers, catalog, entitlements, tools, rateLimiter, log, now });
-  const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now });
+  const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now, files: filesSvc, fileContext, projects });
   const stylesSvc = new StyleService(db, catalog, providers);
 
   return {
@@ -192,9 +220,16 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     runner,
     chat,
     styles: stylesSvc,
+    jobs,
+    embeddings,
+    retrieval,
+    fileContext,
+    files: filesSvc,
+    projects,
     apiKeyAuth: null,
     now,
     async close() {
+      await jobs.close();
       await bus.close();
       await dbHandle.close();
       if (redis && o.redis === undefined) redis.disconnect();

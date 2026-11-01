@@ -25,9 +25,9 @@ test('admin adds a provider, tests it, imports and enables models; key is never 
   const card = page.locator('li', { hasText: 'Mock Cloud' });
   await card.getByRole('button', { name: 'Test' }).click();
   await expect(card.getByText(/Connected in \d+ ms/)).toBeVisible();
-  await expect(card.getByText(/Found 4 models/)).toBeVisible();
+  await expect(card.getByText(/Found 5 models/)).toBeVisible();
   await card.getByRole('button', { name: 'Import models' }).click();
-  await expect(page.getByText('Imported 4 new models').first()).toBeVisible();
+  await expect(page.getByText('Imported 5 new models').first()).toBeVisible();
 
   // Editing shows only the masked key with a "Replace key" flow.
   await card.getByRole('button', { name: 'Edit Mock Cloud' }).click();

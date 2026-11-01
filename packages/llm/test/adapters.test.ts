@@ -162,3 +162,16 @@ describe('network errors', () => {
     expect(t).toBeTruthy();
   });
 });
+
+describe('embeddings', () => {
+  it.each(['openai', 'gemini', 'ollama', 'cohere'] as const)('%s returns one normalized vector per input', async (type) => {
+    const base = type === 'openai' ? `${mock.url}/v1` : mock.url;
+    const r = await createAdapter({ type, baseUrl: base, apiKey: 'test-key' }).embed('mock-embed', ['red apple pie', 'apple pies are red', 'quantum physics']);
+    expect(r.vectors).toHaveLength(3);
+    const cos = (a: number[], b: number[]) => a.reduce((s, x, i) => s + x * b[i]!, 0);
+    expect(cos(r.vectors[0]!, r.vectors[1]!)).toBeGreaterThan(cos(r.vectors[0]!, r.vectors[2]!));
+  });
+  it('anthropic explains it has no embeddings API', async () => {
+    await expect(createAdapter({ type: 'anthropic', baseUrl: mock.url }).embed('x', ['y'])).rejects.toThrow(/embeddings API/);
+  });
+});

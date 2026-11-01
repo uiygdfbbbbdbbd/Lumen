@@ -1,6 +1,6 @@
 import { joinUrl, jsonHeaders, request } from '../http.js';
 import { parseSse } from '../streams.js';
-import { LlmError, type ChatMessage, type ChatRequest, type FinishReason, type ModelInfo, type ProviderAdapter, type ProviderConfig, type StreamEvent } from '../types.js';
+import { LlmError, type ChatMessage, type EmbeddingResult, type ChatRequest, type FinishReason, type ModelInfo, type ProviderAdapter, type ProviderConfig, type StreamEvent } from '../types.js';
 
 const THINKING_BUDGET = { low: 1024, medium: 8192, high: 24576 } as const;
 type Part = Record<string, unknown>;
@@ -120,6 +120,18 @@ export class GeminiAdapter implements ProviderAdapter {
       };
     }
     yield { type: 'finish', reason: finish };
+  }
+
+  async embed(model: string, inputs: string[], signal?: AbortSignal): Promise<EmbeddingResult> {
+    const m = model.replace(/^models\//, '');
+    const res = await request(this.cfg, joinUrl(this.cfg.baseUrl, `v1beta/models/${encodeURIComponent(m)}:batchEmbedContents`), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({ requests: inputs.map((text) => ({ model: `models/${m}`, content: { parts: [{ text }] } })) }),
+      signal,
+    });
+    const j = (await res.json()) as { embeddings: { values: number[] }[] };
+    return { vectors: j.embeddings.map((e) => e.values), inputTokens: 0 };
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {

@@ -1,6 +1,6 @@
 import { joinUrl, jsonHeaders, request } from '../http.js';
 import { parseSse, parseToolArguments } from '../streams.js';
-import { LlmError, type ChatMessage, type ChatRequest, type FinishReason, type ModelInfo, type ProviderAdapter, type ProviderConfig, type StreamEvent } from '../types.js';
+import { LlmError, type ChatMessage, type EmbeddingResult, type ChatRequest, type FinishReason, type ModelInfo, type ProviderAdapter, type ProviderConfig, type StreamEvent } from '../types.js';
 
 /** Cohere Chat API v2 (SSE). */
 export class CohereAdapter implements ProviderAdapter {
@@ -88,6 +88,17 @@ export class CohereAdapter implements ProviderAdapter {
       }
     }
     yield { type: 'finish', reason: finish };
+  }
+
+  async embed(model: string, inputs: string[], signal?: AbortSignal): Promise<EmbeddingResult> {
+    const res = await request(this.cfg, joinUrl(this.cfg.baseUrl, 'v2/embed'), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({ model, texts: inputs, input_type: 'search_document', embedding_types: ['float'] }),
+      signal,
+    });
+    const j = (await res.json()) as { embeddings: { float: number[][] }; meta?: { billed_units?: { input_tokens?: number } } };
+    return { vectors: j.embeddings.float, inputTokens: j.meta?.billed_units?.input_tokens ?? 0 };
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {

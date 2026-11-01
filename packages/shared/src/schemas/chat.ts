@@ -29,6 +29,7 @@ export const createConversationSchema = z.object({
   incognito: z.boolean().default(false),
   instructions: z.string().max(8000).default(''),
   settings: conversationSettingsSchema.default({}),
+  projectId: z.string().uuid().nullable().optional(),
 });
 
 export const conversationPatchSchema = z
@@ -41,6 +42,7 @@ export const conversationPatchSchema = z
     starred: z.boolean(),
     archived: z.boolean(),
     activeLeafId: z.string().uuid(),
+    projectId: z.string().uuid().nullable(),
   })
   .partial()
   .strict();
@@ -53,6 +55,8 @@ export const sendMessageSchema = z.object({
   /** 2-4 models for side-by-side compare mode. */
   compareModelIds: z.array(z.string().max(200)).min(2).max(4).optional(),
   thinkingEffort: z.enum(THINKING).optional(),
+  /** Uploaded file ids to attach to this message. */
+  attachments: z.array(z.string().uuid()).max(20).optional(),
 });
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
@@ -97,6 +101,7 @@ export type ChatStreamEvent =
   | { type: 'tool_result'; id: string; name: string; content: string; isError: boolean }
   | { type: 'fallback'; from: string; to: string; reason: string }
   | { type: 'compacted'; tokensBefore: number; tokensAfter: number }
+  | { type: 'citations'; items: { n: number; chunkId: string; fileId: string; fileName: string; location: { page?: number; section?: string }; snippet: string }[] }
   | { type: 'usage'; inputTokens: number; outputTokens: number; contextTokens: number; contextWindow: number }
   | { type: 'done'; status: 'complete' | 'cancelled'; finishReason: string }
   | { type: 'error'; code: string; message: string; resetAt?: string; retryable: boolean };

@@ -12,6 +12,9 @@ import type { EntitlementService } from '../entitlements/entitlements.service.js
 import type { ModelCatalogService, ResolvedModel } from '../models/catalog.service.js';
 import type { ProviderService } from '../providers/provider.service.js';
 import type { SettingsService } from '../settings/settings.service.js';
+import type { FileContextBuilder } from '../files/context.js';
+import type { FileService } from '../files/file.service.js';
+import type { ProjectService } from '../projects/project.service.js';
 import { pathTo, serializeMessage, type ConversationService } from './conversation.service.js';
 import type { GenerationRunner } from './generation.js';
 import { buildSystemPrompt, builtinStyle } from './prompt.js';
@@ -31,6 +34,9 @@ export interface ChatDeps {
   bus: EventBus;
   log: Logger;
   now: () => Date;
+  files: FileService;
+  fileContext: FileContextBuilder;
+  projects: ProjectService;
 }
 
 type Thinking = 'off' | 'low' | 'medium' | 'high';
@@ -44,7 +50,9 @@ export class ChatService {
   }
 
   private async resolveModel(user: UserRow, conv: ConversationRow, requested?: string): Promise<ResolvedModel> {
-    const ref = requested ?? conv.modelId ?? this.prefs(user).defaultModel;
+    let projectModel: string | null = null;
+    if (conv.projectId) projectModel = (await this.d.projects.require(user, conv.projectId, 'viewer').catch(() => null))?.project.defaultModelId ?? null;
+    const ref = requested ?? conv.modelId ?? projectModel ?? this.prefs(user).defaultModel;
     if (ref && ref !== 'auto') return this.d.catalog.resolve(ref, user);
     const def = await this.d.catalog.defaultFor(user);
     if (!def) throw new LumenError('PROVIDER_UNAVAILABLE', 'No AI models are available yet. Ask an administrator to add a provider.');
@@ -71,10 +79,11 @@ export class ChatService {
     return lease;
   }
 
-  private async systemPrompt(user: UserRow, conv: ConversationRow, model: ResolvedModel): Promise<string> {
+  private async systemPrompt(user: UserRow, conv: ConversationRow, model: ResolvedModel, extra: { title: string; body: string }[] = []): Promise<string> {
     const branding = await this.d.settings.get('branding');
     const prefs = this.prefs(user);
-    const styleId = conv.settings.styleId ?? prefs.defaultStyle;
+    const project = conv.projectId ? (await this.d.projects.require(user, conv.projectId, 'viewer').catch(() => null))?.project : null;
+    const styleId = conv.settings.styleId ?? project?.defaultStyleId ?? prefs.defaultStyle;
     let styleText = builtinStyle(styleId);
     if (!styleText && styleId && /^[0-9a-f-]{36}$/.test(styleId)) {
       const [s] = await this.d.db.select().from(styles).where(and(eq(styles.id, styleId), eq(styles.userId, user.id)));
@@ -88,6 +97,7 @@ export class ChatService {
       userInstructions: prefs.customInstructions,
       conversationInstructions: conv.instructions,
       styleInstructions: styleText,
+      extraSections: [...(project?.instructions.trim() ? [{ title: `Project "${project.name}" instructions`, body: project.instructions.trim() }] : []), ...extra],
     });
   }
 
@@ -116,8 +126,10 @@ export class ChatService {
     }
     let remaining = created.length;
     const prefs = this.prefs(user);
+    const query = parent.role === 'user' ? parent.content : '';
     for (const [i, a] of created.entries()) {
       const model = models[i]!;
+      const fctx = await this.d.fileContext.build({ conversationId: conv.id, projectId: conv.projectId, latestUserMessageId: parent.id, query, vision: model.model.capabilities.vision, userId: user.id });
       void this.d.runner.run({
         user,
         conversationId: conv.id,
@@ -125,10 +137,11 @@ export class ChatService {
         assistant: a,
         path,
         model,
-        systemPrompt: await this.systemPrompt(user, conv, model),
+        systemPrompt: await this.systemPrompt(user, conv, model, fctx.sections),
+        files: { citations: fctx.citations, images: fctx.images, scope: fctx.offerSearch || conv.projectId ? { fileIds: fctx.fileIds, projectId: conv.projectId } : null },
         thinking: opts.thinking ?? conv.settings.thinkingEffort ?? prefs.thinkingEffort,
         temperature: conv.settings.temperature,
-        toolNames: DEFAULT_TOOLS,
+        toolNames: fctx.offerSearch || conv.projectId ? [...DEFAULT_TOOLS, 'file_search'] : DEFAULT_TOOLS,
         onFinished: async (ok) => {
           remaining -= 1;
           if (remaining === 0) await opts.release();
@@ -139,9 +152,12 @@ export class ChatService {
     return created;
   }
 
-  async send(user: UserRow, ent: Entitlements, conversationId: string, input: { content: string; parentId?: string | null; modelId?: string; compareModelIds?: string[]; thinkingEffort?: Thinking }) {
+  async send(user: UserRow, ent: Entitlements, conversationId: string, input: { content: string; parentId?: string | null; modelId?: string; compareModelIds?: string[]; thinkingEffort?: Thinking; attachments?: string[] }) {
     const conv = await this.d.conversations.get(user, conversationId);
-    if (!input.content.trim()) throw new LumenError('VALIDATION_FAILED', 'Message is empty.');
+    if (!input.content.trim() && !input.attachments?.length) throw new LumenError('VALIDATION_FAILED', 'Message is empty.');
+    const attached = await this.d.files.byIds(user, [...new Set(input.attachments ?? [])]);
+    const notReady = attached.find((f) => f.status !== 'ready');
+    if (notReady) throw new LumenError('CONFLICT', notReady.status === 'failed' || notReady.status === 'quarantined' ? `“${notReady.name}” can’t be used: ${notReady.error ?? notReady.status}.` : `“${notReady.name}” is still processing. Try again in a moment.`);
     const refs = input.compareModelIds ?? [input.modelId];
     const models = await Promise.all(refs.map((r) => this.resolveModel(user, conv, r)));
     const release = await this.admit(user, ent, models.length);
@@ -154,8 +170,16 @@ export class ChatService {
       }
       const [userMsg] = await this.d.db
         .insert(messages)
-        .values({ conversationId: conv.id, parentId: parentId ?? null, role: 'user', content: input.content, createdAt: this.d.now() })
+        .values({
+          conversationId: conv.id,
+          parentId: parentId ?? null,
+          role: 'user',
+          content: input.content,
+          parts: attached.map((f) => ({ type: 'attachment' as const, fileId: f.id, name: f.name, kind: f.kind, mimeType: f.mimeType, sizeBytes: f.sizeBytes })),
+          createdAt: this.d.now(),
+        })
         .returning();
+      await this.d.fileContext.attach(conv.id, userMsg!.id, attached.map((f) => f.id));
       await this.d.db.update(conversations).set({ messageCount: sql`${conversations.messageCount} + 1`, ...(input.modelId && !input.compareModelIds ? { modelId: input.modelId } : {}) }).where(eq(conversations.id, conv.id));
       const assistants = await this.launch(user, conv, userMsg!, models, { thinking: input.thinkingEffort, release });
       return { userMessage: serializeMessage(userMsg!), assistantMessages: assistants.map(serializeMessage) };

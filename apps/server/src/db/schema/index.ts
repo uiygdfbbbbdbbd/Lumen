@@ -5,3 +5,4 @@ export * from './platform.js';
 export * from './providers.js';
 export * from './chat.js';
 export * from './usage.js';
+export * from './files.js';

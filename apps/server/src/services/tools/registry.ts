@@ -5,6 +5,8 @@ export interface ToolContext {
   user: UserRow;
   conversationId: string | null;
   signal: AbortSignal;
+  /** Files/project the model may search with file_search in this turn. */
+  fileScope?: { fileIds: string[]; projectId: string | null };
 }
 
 export interface Tool {

@@ -1,6 +1,6 @@
 import { joinUrl, jsonHeaders, request } from '../http.js';
 import { parseNdjson } from '../streams.js';
-import { LlmError, type ChatMessage, type ChatRequest, type ModelInfo, type ProviderAdapter, type ProviderConfig, type StreamEvent } from '../types.js';
+import { LlmError, type ChatMessage, type EmbeddingResult, type ChatRequest, type ModelInfo, type ProviderAdapter, type ProviderConfig, type StreamEvent } from '../types.js';
 
 interface OllamaChunk {
   message?: { content?: string; thinking?: string; tool_calls?: { function: { name: string; arguments: Record<string, unknown> } }[] };
@@ -84,6 +84,12 @@ export class OllamaAdapter implements ProviderAdapter {
       }
     }
     yield { type: 'finish', reason: sawTools ? 'tool_calls' : 'stop' };
+  }
+
+  async embed(model: string, inputs: string[], signal?: AbortSignal): Promise<EmbeddingResult> {
+    const res = await request(this.cfg, joinUrl(this.cfg.baseUrl, 'api/embed'), { method: 'POST', headers: this.headers(), body: JSON.stringify({ model, input: inputs }), signal });
+    const j = (await res.json()) as { embeddings: number[][]; prompt_eval_count?: number };
+    return { vectors: j.embeddings, inputTokens: j.prompt_eval_count ?? 0 };
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {

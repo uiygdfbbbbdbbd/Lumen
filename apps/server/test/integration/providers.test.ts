@@ -84,7 +84,7 @@ describe('provider CRUD and secret handling', () => {
     const p = (await createProvider()).json();
     const r = (await admin.post(`/api/admin/providers/${p.id}/test`)).json();
     expect(r.ok).toBe(true);
-    expect(r.modelCount).toBe(4);
+    expect(r.modelCount).toBe(5);
     expect(r.completion).toMatch(/You said/);
     const view = (await admin.get(`/api/admin/providers/${p.id}`)).json();
     expect(view.health.status).toBe('healthy');
@@ -146,8 +146,8 @@ describe('models, visibility, aliases', () => {
   });
 
   it('imports models (disabled by default) idempotently', async () => {
-    expect((await admin.post(`/api/admin/providers/${providerId}/import-models`, { enable: false })).json()).toEqual({ added: 4, existing: 0 });
-    expect((await admin.post(`/api/admin/providers/${providerId}/import-models`, { enable: false })).json()).toEqual({ added: 0, existing: 4 });
+    expect((await admin.post(`/api/admin/providers/${providerId}/import-models`, { enable: false })).json()).toEqual({ added: 5, existing: 0 });
+    expect((await admin.post(`/api/admin/providers/${providerId}/import-models`, { enable: false })).json()).toEqual({ added: 0, existing: 5 });
     const list = (await admin.get(`/api/admin/models?providerId=${providerId}`)).json().items as { providerModelId: string; enabled: boolean; capabilities: { vision: boolean; reasoning: boolean } }[];
     expect(list.every((m) => !m.enabled)).toBe(true);
     expect(list.find((m) => m.providerModelId === 'mock-vision')!.capabilities.vision).toBe(true);
@@ -164,7 +164,7 @@ describe('models, visibility, aliases', () => {
 
     const seen = (await user.get('/api/models')).json().items as { id: string; displayName: string; available: boolean; lockedReason: string | null; providerName: string }[];
     const mine = seen.filter((m) => m.providerName === 'Catalog Provider');
-    expect(mine.map((m) => m.displayName).sort()).toEqual(['mock-fast', 'mock-smart', 'mock-vision']);
+    expect(mine.map((m) => m.displayName).sort()).toEqual(['mock-embed', 'mock-fast', 'mock-smart', 'mock-vision']);
     expect(mine.find((m) => m.displayName === 'mock-smart')).toMatchObject({ available: false, lockedReason: 'EMAIL_UNVERIFIED' });
     expect(mine.find((m) => m.displayName === 'mock-vision')).toMatchObject({ available: false, lockedReason: 'BETA_ONLY' });
 

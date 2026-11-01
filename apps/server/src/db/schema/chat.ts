@@ -32,6 +32,8 @@ export const conversations = pgTable(
     incognito: boolean('incognito').notNull().default(false),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     activeLeafId: uuid('active_leaf_id'),
+    /** Project the chat belongs to (FK added in the files migration to avoid a circular import). */
+    projectId: uuid('project_id'),
     messageCount: integer('message_count').notNull().default(0),
     /** Soft delete enables "undo"; a cleanup job purges after the undo window. */
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -44,6 +46,7 @@ export const conversations = pgTable(
     index('conversations_user_recent_idx').on(t.userId, t.lastMessageAt),
     index('conversations_title_tsv_idx').using('gin', t.titleTsv),
     index('conversations_expires_idx').on(t.expiresAt),
+    index('conversations_project_idx').on(t.projectId),
   ],
 );
 

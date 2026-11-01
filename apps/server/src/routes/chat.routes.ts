@@ -32,7 +32,10 @@ export function chatRoutes(app: FastifyInstance, c: Container) {
     feature: 'chat',
     body: createConversationSchema,
     rateLimit: { name: 'chat:create', limit: 60, windowMs: MIN, by: 'user' },
-    handler: async ({ auth, body, reply }) => reply.code(201).send(summarize(await c.conversations.create(auth.user, body))),
+    handler: async ({ auth, body, reply }) => {
+      if (body.projectId) await c.projects.require(auth.user, body.projectId, 'viewer');
+      return reply.code(201).send(summarize(await c.conversations.create(auth.user, body)));
+    },
   });
   route(app, c, { method: 'GET', url: '/api/conversations', auth: 'user', query: listConversationsQuery, handler: async ({ auth, query }) => c.conversations.list(auth.user, query) });
   route(app, c, {
@@ -57,7 +60,10 @@ export function chatRoutes(app: FastifyInstance, c: Container) {
     auth: 'user',
     params: uuidParams,
     body: conversationPatchSchema,
-    handler: async ({ auth, params, body }) => summarize(await c.conversations.patch(auth.user, params.id, body)),
+    handler: async ({ auth, params, body }) => {
+      if (body.projectId) await c.projects.require(auth.user, body.projectId, 'viewer');
+      return summarize(await c.conversations.patch(auth.user, params.id, body));
+    },
   });
   route(app, c, {
     method: 'DELETE',

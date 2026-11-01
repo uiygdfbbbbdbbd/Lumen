@@ -63,6 +63,11 @@ export const envSchema = z
     CAPTCHA_PROVIDER: z.enum(['none', 'turnstile', 'hcaptcha']).default('none'),
     CAPTCHA_SECRET: z.string().optional(),
     ALLOW_PRIVATE_PROVIDER_URLS: bool.default(false),
+    /** clamd host for upload virus scanning (optional). */
+    CLAMAV_HOST: z.string().optional(),
+    CLAMAV_PORT: z.coerce.number().int().default(3310),
+    /** Run background job workers inside the API process (single-node). Set false when running apps/worker. */
+    RUN_WORKERS: bool.default(true),
     /** Scales every rate limit. Keep 1 in production; raise for load/E2E test environments. */
     RATE_LIMIT_MULTIPLIER: z.coerce.number().min(1).max(1000).default(1),
     MAX_JSON_BODY_BYTES: z.coerce.number().int().default(2 * 1024 * 1024),

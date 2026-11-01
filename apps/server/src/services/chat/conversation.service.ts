@@ -11,6 +11,7 @@ export const UNDO_WINDOW_MS = 10 * 60_000;
 
 export interface ConversationSummary {
   id: string;
+  projectId: string | null;
   title: string;
   modelId: string | null;
   pinned: boolean;
@@ -25,6 +26,7 @@ export interface ConversationSummary {
 export function summarize(c: ConversationRow): ConversationSummary {
   return {
     id: c.id,
+    projectId: c.projectId,
     title: c.title,
     modelId: c.modelId,
     pinned: c.pinned,
@@ -101,6 +103,7 @@ export class ConversationService {
         incognito: input.incognito,
         instructions: input.instructions,
         settings: input.settings,
+        projectId: input.projectId ?? null,
         expiresAt: input.incognito ? new Date(this.now().getTime() + INCOGNITO_TTL_MS) : null,
         createdAt: this.now(),
         updatedAt: this.now(),
@@ -164,6 +167,7 @@ export class ConversationService {
       set.titleSource = 'user';
     }
     if (patch.modelId !== undefined) set.modelId = patch.modelId;
+    if (patch.projectId !== undefined) set.projectId = patch.projectId;
     if (patch.instructions !== undefined) set.instructions = patch.instructions;
     if (patch.settings !== undefined) set.settings = { ...c.settings, ...patch.settings };
     for (const k of ['pinned', 'starred', 'archived'] as const) if (patch[k] !== undefined) set[k] = patch[k];

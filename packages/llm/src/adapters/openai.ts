@@ -1,6 +1,6 @@
 import { joinUrl, jsonHeaders, request } from '../http.js';
 import { parseSse, parseToolArguments } from '../streams.js';
-import { LlmError, type ChatMessage, type ChatRequest, type FinishReason, type ModelInfo, type ProviderAdapter, type ProviderConfig, type ProviderType, type StreamEvent } from '../types.js';
+import { LlmError, type ChatMessage, type EmbeddingResult, type ChatRequest, type FinishReason, type ModelInfo, type ProviderAdapter, type ProviderConfig, type ProviderType, type StreamEvent } from '../types.js';
 
 /** OpenAI Chat Completions, also used for OpenAI-compatible servers (Mistral, OpenRouter, vLLM, LM Studio, Ollama /v1...). */
 export class OpenAIAdapter implements ProviderAdapter {
@@ -122,6 +122,12 @@ export class OpenAIAdapter implements ProviderAdapter {
     }
     for (const c of calls.values()) yield { type: 'tool-call', call: { id: c.id, name: c.name, arguments: parseToolArguments(c.args) } };
     yield { type: 'finish', reason: finish ?? (calls.size ? 'tool_calls' : 'stop') };
+  }
+
+  async embed(model: string, inputs: string[], signal?: AbortSignal): Promise<EmbeddingResult> {
+    const res = await request(this.cfg, joinUrl(this.cfg.baseUrl, 'embeddings'), { method: 'POST', headers: this.headers(), body: JSON.stringify({ model, input: inputs }), signal });
+    const j = (await res.json()) as { data: { index: number; embedding: number[] }[]; usage?: { prompt_tokens?: number } };
+    return { vectors: [...j.data].sort((a, b) => a.index - b.index).map((d) => d.embedding), inputTokens: j.usage?.prompt_tokens ?? 0 };
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
