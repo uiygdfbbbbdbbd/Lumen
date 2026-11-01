@@ -42,6 +42,9 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
+  // Pre-bundle deps that are only reached through lazy routes/panels, so the dev server never has to
+  // discover them mid-session and force a full page reload.
+  optimizeDeps: { include: ['diff', 'sucrase', 'recharts', 'mermaid', 'dompurify', 'pyodide', '@monaco-editor/react'] },
   resolve: { conditions: ['@lumen/source', 'module', 'browser', 'development|production'] },
   server: {
     port: 5173,

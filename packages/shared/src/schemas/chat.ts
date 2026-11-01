@@ -118,7 +118,7 @@ export type ChatStreamEvent =
   | { type: 'tool_result'; id: string; name: string; content: string; isError: boolean }
   | { type: 'fallback'; from: string; to: string; reason: string }
   | { type: 'compacted'; tokensBefore: number; tokensAfter: number }
-  | { type: 'artifact'; id: string; version: number; title: string; artifactType: string; action: 'created' | 'updated' }
+  | { type: 'artifact'; id: string; version: number; title: string; artifactType: string; action: 'created' | 'updated' | 'suggested' }
   | { type: 'memory'; ids: string[] }
   | { type: 'research'; runId: string; status: ResearchStatus; step: ResearchStep; message: string; done: number; total: number; sources?: { n: number; url: string; title: string; siteName: string }[] }
   | { type: 'citations'; items: CitationItem[] }

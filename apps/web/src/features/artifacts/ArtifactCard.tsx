@@ -4,7 +4,7 @@ import { AppWindow, BarChart3, Code2, FileText, GitBranch, Image, Loader2, Prese
 import type { LiveArtifact } from '../chat/store.js';
 import { useArtifactPanel } from './panel.js';
 
-export const ARTIFACT_TOOLS = new Set(['create_artifact', 'update_artifact', 'rewrite_artifact']);
+export const ARTIFACT_TOOLS = new Set(['create_artifact', 'update_artifact', 'rewrite_artifact', 'suggest_artifact_edit']);
 
 const ICONS: Record<ArtifactType, typeof FileText> = {
   markdown: FileText, code: Code2, html: AppWindow, react: AppWindow, svg: Image, mermaid: GitBranch, chart: BarChart3, table: Table2, slides: Presentation, spreadsheet: Table2, latex: Sigma,
@@ -23,7 +23,7 @@ export function describeArtifactCall(name: string, args: Record<string, unknown>
   const version = event?.version ?? (result ? Number(/version (\d+)/.exec(result.content)?.[1]) || undefined : undefined);
   const title = event?.title ?? (typeof args.title === 'string' ? args.title : (result ? /artifact "(.+?)"/.exec(result.content)?.[1] : undefined)) ?? 'Artifact';
   const type = (event?.artifactType ?? (typeof args.type === 'string' ? args.type : undefined)) as ArtifactType | undefined;
-  return { id: id ?? event?.id, version, title, type, action: name === 'create_artifact' ? 'Created' : 'Updated' };
+  return { id: id ?? event?.id, version, title, type, action: name === 'create_artifact' ? 'Created' : name === 'suggest_artifact_edit' ? 'Suggested changes to' : 'Updated' };
 }
 
 export function ArtifactCard({ name, args, result, live }: { name: string; args: Record<string, unknown>; result?: { content: string; isError: boolean }; live?: LiveArtifact[] }) {

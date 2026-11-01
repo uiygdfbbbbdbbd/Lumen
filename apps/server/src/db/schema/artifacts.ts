@@ -68,3 +68,26 @@ export const artifactStorage = pgTable(
 
 export type ArtifactRow = typeof artifacts.$inferSelect;
 export type ArtifactVersionRow = typeof artifactVersions.$inferSelect;
+
+export const suggestionStatusEnum = pgEnum('artifact_suggestion_status', ['pending', 'accepted', 'rejected']);
+
+/** Proposed edits shown for review (tracked changes); accepting applies chosen hunks as a new version. */
+export const artifactSuggestions = pgTable(
+  'artifact_suggestions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    artifactId: uuid('artifact_id').notNull().references(() => artifacts.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    baseVersion: integer('base_version').notNull(),
+    /** Full proposed content (hunks are computed against the base version). */
+    content: text('content').notNull(),
+    note: text('note').notNull().default(''),
+    source: text('source').notNull().default('ai'),
+    status: suggestionStatusEnum('status').notNull().default('pending'),
+    messageId: uuid('message_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  },
+  (t) => [index('artifact_suggestions_artifact_idx').on(t.artifactId, t.status)],
+);
+export type ArtifactSuggestionRow = typeof artifactSuggestions.$inferSelect;

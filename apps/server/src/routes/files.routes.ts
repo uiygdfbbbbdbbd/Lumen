@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { LumenError } from '@lumen/shared';
 import type { Container } from '../container.js';
+import { safeBody } from '../http/stream.js';
 import { route, uuidParams } from '../http/route.js';
 import { serializeFile } from '../services/files/file.service.js';
 
@@ -97,7 +98,7 @@ export function fileRoutes(app: FastifyInstance, c: Container) {
         // Even if a browser renders it, uploaded content can't run script or reach our origin's storage.
         .header('content-security-policy', "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox")
         .header('cache-control', 'private, max-age=300')
-        .send(obj.body);
+        .send(safeBody(obj.body, reply, c.log as never));
     },
   });
   route(app, c, {

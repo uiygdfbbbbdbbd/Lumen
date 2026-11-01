@@ -1,13 +1,35 @@
 import { ARTIFACT_TYPES } from '../../db/schema/index.js';
 import type { ArtifactService } from '../artifacts/artifact.service.js';
-import type { Tool } from './registry.js';
+import type { Tool, ToolContext } from './registry.js';
+import type { SuggestionService } from '../artifacts/suggestion.service.js';
 
-export const ARTIFACT_GUIDANCE = `Artifacts: for substantial, self-contained content the user will likely reuse or iterate on (documents over ~20 lines, code files, HTML/React apps, SVG, Mermaid diagrams, charts, tables, slide decks), call create_artifact instead of pasting it in chat. Then edit it with update_artifact (exact text replacement) or rewrite_artifact for large changes. Keep chat replies short when you create or update an artifact.
+export const ARTIFACT_GUIDANCE = `Artifacts: for substantial, self-contained content the user will likely reuse or iterate on (documents over ~20 lines, code files, HTML/React apps, SVG, Mermaid diagrams, charts, tables, slide decks), call create_artifact instead of pasting it in chat. Then edit it with update_artifact (exact text replacement) or rewrite_artifact for large changes. When the user asks you to review, suggest or propose changes to an artifact, use suggest_artifact_edit so they can accept or reject each change. Keep chat replies short when you create or update an artifact.
 Types: markdown, code (set language), html (complete page), react (one default-exported component; you may import React, react-dom, lucide-react, recharts; use Tailwind-free inline styles), svg, mermaid, chart (JSON: {"type":"bar|line|area|pie|scatter","title","data":[{...}],"x":"field","y":["field"]}), table (CSV), slides (markdown, slides separated by ---, "Note:" for speaker notes), spreadsheet (CSV; cells may contain formulas like =SUM(B2:B5)), latex.
 Inside html/react artifacts you can call window.lumen.ai(prompt) for AI and window.lumen.storage.get/set(key, value) to persist data.`;
 
-export function artifactTools(svc: ArtifactService): Tool[] {
+export function artifactTools(svc: ArtifactService, suggestions?: SuggestionService): Tool[] {
   return [
+    ...(suggestions
+      ? [
+          {
+            definition: {
+              name: 'suggest_artifact_edit',
+              description: 'Propose an edit for the user to review (shown as tracked changes they accept or reject per change), instead of applying it.',
+              inputSchema: {
+                type: 'object',
+                properties: { id: { type: 'string' }, old_str: { type: 'string', description: 'Exact text to change; must occur exactly once.' }, new_str: { type: 'string' }, note: { type: 'string', description: 'Why, in a few words.' } },
+                required: ['id', 'old_str', 'new_str'],
+              },
+            },
+            async run(args: Record<string, unknown>, ctx: ToolContext) {
+              const s = await suggestions.createFromReplace(ctx.user, String(args.id ?? ''), String(args.old_str ?? ''), String(args.new_str ?? ''), String(args.note ?? ''), ctx.messageId ?? null);
+              const a = await svc.get(ctx.user, s.artifactId);
+              await ctx.emit?.({ type: 'artifact', id: a.id, version: a.currentVersion, title: a.title, artifactType: a.type, action: 'suggested' });
+              return `Suggested an edit to artifact "${a.title}" (suggestion ${s.id}). The user will review it.`;
+            },
+          } satisfies Tool,
+        ]
+      : []),
     {
       definition: {
         name: 'create_artifact',

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { LumenError } from '@lumen/shared';
 import type { Container } from '../container.js';
+import { safeBody } from '../http/stream.js';
 import { route } from '../http/route.js';
 import { sql } from 'drizzle-orm';
 
@@ -89,7 +90,7 @@ export function publicRoutes(app: FastifyInstance, c: Container) {
         .header('content-type', 'image/webp')
         .header('cache-control', 'public, max-age=31536000, immutable')
         .header('x-content-type-options', 'nosniff')
-        .send(obj.body);
+        .send(safeBody(obj.body, reply, c.log as never));
     },
   });
 }

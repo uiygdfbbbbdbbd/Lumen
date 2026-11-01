@@ -6,6 +6,7 @@ import { route, uuidParams } from '../http/route.js';
 import { ARTIFACT_TYPES } from '../db/schema/index.js';
 import { serializeArtifact } from '../services/artifacts/artifact.service.js';
 import { markdownToDocx, slidesToPptx } from '../services/artifacts/export.js';
+import { QUICK_ACTIONS } from '../services/artifacts/suggestion.service.js';
 
 const verParams = z.object({ id: z.string().uuid(), version: z.coerce.number().int().min(1) });
 const keyParams = z.object({ id: z.string().uuid(), key: z.string().regex(/^[\w.:-]{1,128}$/) });
@@ -128,6 +129,34 @@ export function artifactRoutes(app: FastifyInstance, c: Container) {
         .header('content-disposition', `attachment; filename="${safe}.pptx"`)
         .send(await slidesToPptx(a.title, content));
     },
+  });
+
+  // Suggestions (tracked changes): proposed by the AI or quick actions, accepted per hunk in the UI.
+  route(app, c, {
+    method: 'GET',
+    url: '/api/artifacts/:id/suggestions',
+    auth: 'user',
+    params: uuidParams,
+    query: z.object({ status: z.enum(['pending', 'all']).default('pending') }),
+    handler: async ({ auth, params, query }) => ({ items: await c.suggestions.list(auth.user, params.id, query.status) }),
+  });
+  route(app, c, {
+    method: 'POST',
+    url: '/api/artifacts/:id/suggestions/:sid/resolve',
+    auth: 'user',
+    params: z.object({ id: z.string().uuid(), sid: z.string().uuid() }),
+    body: z.object({ status: z.enum(['accepted', 'rejected']) }),
+    handler: async ({ auth, params, body }) => c.suggestions.resolve(auth.user, params.id, params.sid, body.status),
+  });
+  route(app, c, {
+    method: 'POST',
+    url: '/api/artifacts/:id/quick-action',
+    auth: 'user',
+    feature: 'chat',
+    params: uuidParams,
+    body: z.object({ action: z.enum(QUICK_ACTIONS), option: z.string().trim().max(40).optional(), selection: z.string().max(200_000).optional() }),
+    rateLimit: { name: 'artifacts:quick-action', limit: 20, windowMs: 60_000, by: 'user' },
+    handler: async ({ auth, params, body, reply }) => reply.code(201).send(await c.suggestions.quickAction(auth.user, auth.entitlements, params.id, body)),
   });
 
   // Mini-app APIs (called by the sandboxed runtime through the parent window's bridge).

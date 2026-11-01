@@ -26,7 +26,7 @@ import {
   cn,
   toast,
 } from '@lumen/ui';
-import { Code2, Copy, Download, Eye, FolderInput, GitFork, Globe, History, Link2, Maximize2, Minimize2, MoreHorizontal, Pencil, Redo2, Sparkles, Terminal, Trash2, Undo2, X } from 'lucide-react';
+import { Code2, Copy, Download, Eye, FolderInput, GitFork, GitPullRequestArrow, Globe, History, Link2, Loader2, Maximize2, Minimize2, MoreHorizontal, Pencil, Redo2, Sparkles, Terminal, Trash2, Undo2, Wand2, X } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api.js';
 import { artifactApi, useArtifact, useArtifactMutation, useArtifactVersions } from './api.js';
 import type { ConsoleEntry, FrameHandle } from './ArtifactFrame.js';
@@ -34,11 +34,16 @@ import { downloadBlob, editorLanguage, embedSnippet, extensionFor, mimeFor, prin
 import { ArtifactRenderer } from './renderers/ArtifactRenderer.js';
 import { ArtifactFixContext } from './renderers/RenderError.js';
 import { VersionHistory } from './VersionHistory.js';
+import { SuggestionReview, useSuggestions } from './SuggestionReview.js';
 import type { Artifact } from './types.js';
 
 const CodeEditor = lazy(() => import('./monaco-editor.js'));
 
-type View = 'preview' | 'code' | 'history';
+type View = 'preview' | 'code' | 'history' | 'suggestions';
+
+const TONES = ['formal', 'friendly', 'confident', 'simple'];
+const LANGUAGES = ['Spanish', 'French', 'German', 'Portuguese', 'Japanese', 'Chinese'];
+const PORT_TO = ['Python', 'TypeScript', 'Go', 'Rust', 'Java'];
 
 export interface ArtifactPanelProps {
   artifactId: string;
@@ -103,6 +108,15 @@ function LoadedPanel({ artifact: a, onVersionChange, onClose, fullscreen, onTogg
   const frame = useRef<FrameHandle>(null);
   const body = useRef<HTMLDivElement>(null);
   const versions = useArtifactVersions(a.id);
+  const pendingSuggestions = useSuggestions(a.id).data ?? [];
+  const isCode = ['code', 'html', 'react'].includes(a.type);
+  const editable = ['markdown', 'code', 'latex', 'html', 'react', 'slides'].includes(a.type);
+  const quick = useArtifactMutation((body: { action: string; option?: string; selection?: string }) => api(`/api/artifacts/${a.id}/quick-action`, { method: 'POST', body }));
+  const runQuick = (action: string, option?: string) =>
+    quick.mutate(
+      { action, ...(option ? { option } : {}), ...(selection.trim() && a.content.includes(selection) ? { selection } : {}) },
+      { onSuccess: () => { setView('suggestions'); toast.success('Suggestion ready to review'); }, onError: (e) => toast.error('Quick action failed', errorMessage(e)) },
+    );
 
   // New content (AI edit, restore, version switch) resets transient runtime state.
   useEffect(() => {
@@ -254,6 +268,33 @@ function LoadedPanel({ artifact: a, onVersionChange, onClose, fullscreen, onTogg
         <IconButton size="icon-sm" label="Undo last change" icon={<Undo2 size={15} />} disabled={!undoTarget || restore.isPending} onClick={undo} />
         <IconButton size="icon-sm" label="Redo" icon={<Redo2 size={15} />} disabled={!redo.length || restore.isPending || viewingOld} onClick={redoLast} />
         <IconButton size="icon-sm" label="Copy" icon={<Copy size={15} />} onClick={() => void copy()} />
+        {editable ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><IconButton size="icon-sm" label="Quick actions" icon={quick.isPending ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />} disabled={quick.isPending} /></DropdownMenuTrigger>
+            <DropdownMenuContent className="max-h-[70vh] overflow-y-auto">
+              <DropdownMenuLabel>{selection.trim() ? 'Quick actions on the selection' : 'Quick actions'} — suggested for review</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => runQuick('polish')}>Polish</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => runQuick('shorten')}>Shorten</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => runQuick('lengthen')}>Lengthen</DropdownMenuItem>
+              {!isCode ? (
+                <>
+                  <DropdownMenuSeparator />
+                  {TONES.map((t) => <DropdownMenuItem key={t} onSelect={() => runQuick('tone', t)}>Tone: {t}</DropdownMenuItem>)}
+                </>
+              ) : null}
+              <DropdownMenuSeparator />
+              {LANGUAGES.map((l) => <DropdownMenuItem key={l} onSelect={() => runQuick('translate', l)}>Translate to {l}</DropdownMenuItem>)}
+              {isCode ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => runQuick('comments')}>Add comments</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => runQuick('fix_bugs')}>Fix bugs</DropdownMenuItem>
+                  {PORT_TO.filter((l) => l.toLowerCase() !== (a.language ?? '').toLowerCase()).map((l) => <DropdownMenuItem key={l} onSelect={() => runQuick('port', l)}>Port to {l}</DropdownMenuItem>)}
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild><IconButton size="icon-sm" label="Download or export" icon={<Download size={15} />} /></DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -306,6 +347,7 @@ function LoadedPanel({ artifact: a, onVersionChange, onClose, fullscreen, onTogg
         {hasPreview ? <ViewTab active={view === 'preview'} onClick={() => setView('preview')} icon={<Eye size={14} />}>Preview</ViewTab> : null}
         <ViewTab active={view === 'code'} onClick={() => setView('code')} icon={<Code2 size={14} />}>{a.type === 'code' ? 'Code' : 'Source'}</ViewTab>
         <ViewTab active={view === 'history'} onClick={() => setView('history')} icon={<History size={14} />}>History</ViewTab>
+        {pendingSuggestions.length ? <ViewTab active={view === 'suggestions'} onClick={() => setView('suggestions')} icon={<GitPullRequestArrow size={14} />}>Suggestions ({pendingSuggestions.length})</ViewTab> : null}
         <span className="flex-1" />
         {ask && selection.trim() ? <EditSelection selection={selection} onSubmit={(instruction) => ask(`In the artifact "${a.title}" (id: ${a.id}), change this part:\n\n\`\`\`\n${selection.slice(0, 6000)}\n\`\`\`\n\n${instruction}\n\nUse update_artifact to edit it in place.`)} /> : null}
       </div>
@@ -326,7 +368,9 @@ function LoadedPanel({ artifact: a, onVersionChange, onClose, fullscreen, onTogg
 
       <ArtifactFixContext.Provider value={fixWithAI}>
         <div ref={body} className="relative min-h-0 flex-1 overflow-auto" role="tabpanel">
-          {view === 'history' ? (
+          {view === 'suggestions' ? (
+            <SuggestionReview artifact={a} />
+          ) : view === 'history' ? (
             <VersionHistory artifactId={a.id} current={a.version} viewing={a.viewingVersion} canEdit onView={(v) => { onVersionChange(v); setView(hasPreview ? 'preview' : 'code'); }} />
           ) : view === 'code' ? (
             <Suspense fallback={<div className="h-full animate-pulse bg-surface" aria-label="Loading editor" />}>

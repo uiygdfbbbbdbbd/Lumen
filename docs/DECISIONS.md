@@ -256,3 +256,17 @@ XHR, WebSocket and importScripts removed; Python is Pyodide (standard library on
 can't start from blob URLs in an opaque-origin frame. Its CSP allows connections only to our own server
 (to load Pyodide), and those requests carry no credentials. The tool ends the model's turn; the user can
 share the output back as a message.
+
+## D49. Canvas co-editing = suggestions on artifacts
+Instead of a separate canvas document type, Markdown/code artifacts serve as the shared document. The AI can
+apply edits directly (update/rewrite) or propose them with `suggest_artifact_edit`; quick actions (polish,
+shorten, lengthen, tone, translate, add comments, fix bugs, port to another language) always produce
+suggestions, optionally scoped to the selected text. A suggestion stores the full proposed text and the base
+version; the panel splits it into diff hunks the user accepts or rejects one by one. Accepted hunks are
+applied to the current text by context (so they survive unrelated edits) and saved as a new version.
+
+## D50. Storage writes are atomic
+The filesystem driver writes to a temp file and renames it into place, and reads stat the open handle, so a
+file being re-processed (e.g. metadata stripping) can be served at the same time without a size/bytes
+mismatch. File-serving routes also wrap storage streams so a mid-response failure aborts that response
+instead of reaching Fastify's error handler (which crashed the process when headers were already sent).

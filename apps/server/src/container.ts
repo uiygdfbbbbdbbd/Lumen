@@ -42,6 +42,7 @@ import { ProjectService } from './services/projects/project.service.js';
 import { registerExporters } from './services/users/exporters.js';
 import { ArtifactService } from './services/artifacts/artifact.service.js';
 import { artifactTools } from './services/tools/artifact-tools.js';
+import { SuggestionService } from './services/artifacts/suggestion.service.js';
 import { conversationSearchTool, memoryTools } from './services/tools/memory-tools.js';
 import { MemoryService } from './services/memory/memory.service.js';
 import { WebService } from './services/web/web.service.js';
@@ -122,6 +123,7 @@ export interface Container {
   web: WebService;
   research: ResearchService;
   images: ImageService;
+  suggestions: SuggestionService;
   apiKeyAuth: ApiKeyAuthenticator | null;
   now: () => Date;
   close(): Promise<void>;
@@ -206,7 +208,8 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   registerExporters(users, db, storage);
   const artifactsSvc = new ArtifactService(db, projects, audit, catalog, providers, entitlements, now);
   const tools = new ToolRegistry().register(calculatorTool).register(datetimeTool).register(fileSearchTool(retrieval));
-  for (const t of artifactTools(artifactsSvc)) tools.register(t);
+  const suggestions = new SuggestionService(db, artifactsSvc, catalog, providers, entitlements);
+  for (const t of artifactTools(artifactsSvc, suggestions)) tools.register(t);
   const conversationsSvc = new ConversationService(db, bus, now);
   const memorySvc = new MemoryService({ db, settings, embeddings, projects, catalog, providers, entitlements, jobs, log, now });
   for (const t of memoryTools(memorySvc)) tools.register(t);
@@ -262,6 +265,7 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     web,
     research,
     images,
+    suggestions,
     apiKeyAuth: null,
     now,
     async close() {

@@ -1,5 +1,5 @@
-import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
+import { mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -38,17 +38,27 @@ export class FsStorage implements StorageDriver {
   async put(key: string, body: Buffer | Readable, contentType: string) {
     const full = this.resolve(key);
     await mkdir(path.dirname(full), { recursive: true });
-    await pipeline(Buffer.isBuffer(body) ? Readable.from([body]) : body, createWriteStream(full));
-    await writeFile(`${full}.meta`, JSON.stringify({ contentType }));
+    // Write to a temp file and rename: readers of the old object keep a consistent file (atomic replace).
+    const tmp = `${full}.${process.pid}.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.tmp`;
+    try {
+      await pipeline(Buffer.isBuffer(body) ? Readable.from([body]) : body, createWriteStream(tmp));
+      await writeFile(`${full}.meta`, JSON.stringify({ contentType }));
+      await rename(tmp, full);
+    } catch (err) {
+      await rm(tmp, { force: true });
+      throw err;
+    }
     return { size: (await stat(full)).size };
   }
 
   async get(key: string): Promise<StoredObject | null> {
     const full = this.resolve(key);
     try {
-      const s = await stat(full);
+      // Open first, then stat the open handle, so size and bytes always describe the same file.
+      const handle = await open(full, 'r');
+      const s = await handle.stat();
       const meta = JSON.parse(await readFile(`${full}.meta`, 'utf8').catch(() => '{}')) as { contentType?: string };
-      return { body: createReadStream(full), size: s.size, contentType: meta.contentType ?? 'application/octet-stream' };
+      return { body: handle.createReadStream(), size: s.size, contentType: meta.contentType ?? 'application/octet-stream' };
     } catch {
       return null;
     }

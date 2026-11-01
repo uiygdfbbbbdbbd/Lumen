@@ -4,6 +4,7 @@ import { LumenError, userPreferencesSchema } from '@lumen/shared';
 import { eq, sql } from 'drizzle-orm';
 import type { Container } from '../container.js';
 import { isImageModel } from '../services/models/catalog.service.js';
+import { safeBody } from '../http/stream.js';
 import { route } from '../http/route.js';
 import { users } from '../db/schema/index.js';
 
@@ -47,7 +48,7 @@ export function modelRoutes(app: FastifyInstance, c: Container) {
     handler: async ({ params, reply }) => {
       const obj = await c.storage.get(`icons/${params.file}`);
       if (!obj) throw new LumenError('NOT_FOUND', 'Icon not found.');
-      return reply.header('content-type', 'image/webp').header('cache-control', 'public, max-age=31536000, immutable').header('x-content-type-options', 'nosniff').send(obj.body);
+      return reply.header('content-type', 'image/webp').header('cache-control', 'public, max-age=31536000, immutable').header('x-content-type-options', 'nosniff').send(safeBody(obj.body, reply, c.log as never));
     },
   });
 }

@@ -28,7 +28,7 @@ import type { WebService } from '../web/web.service.js';
 import type { ImageService } from '../images/image.service.js';
 import type { MemoryService } from '../memory/memory.service.js';
 
-export const DEFAULT_TOOLS = ['calculator', 'current_datetime', 'convert_units', 'create_artifact', 'update_artifact', 'rewrite_artifact', ...INTERACTIVE_TOOLS];
+export const DEFAULT_TOOLS = ['calculator', 'current_datetime', 'convert_units', 'create_artifact', 'update_artifact', 'rewrite_artifact', 'suggest_artifact_edit', ...INTERACTIVE_TOOLS];
 
 export interface ChatDeps {
   db: Database;

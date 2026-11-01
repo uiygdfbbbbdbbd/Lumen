@@ -29,7 +29,7 @@ export interface LiveArtifact {
   version: number;
   title: string;
   artifactType: string;
-  action: 'created' | 'updated';
+  action: 'created' | 'updated' | 'suggested';
 }
 
 export type Citation = CitationItem;

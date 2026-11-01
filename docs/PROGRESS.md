@@ -13,8 +13,9 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
 | 5 | Files, RAG pipeline, projects, knowledge bases | Done |
 | 6 | Artifacts + sandboxed renderer + versioning + exports | Done |
 | 7 | Memory system + consolidation + UI | Done |
-| 8 | Built-in tools (web search/fetch, deep research, image gen, canvas, ask-user, charts) | In progress — web search/fetch, Deep Research, weather/units/currency, ask-user, inline charts/diagrams, image generation, browser code runner done; canvas co-editing next |
-| 9–18 | Remaining steps | Not started |
+| 8 | Built-in tools (web search/fetch, deep research, image gen, canvas, ask-user, charts) | Done |
+| 9 | Code Mode: orchestrator, isolation, quotas, terminal/files/preview UI, agent loop, rollback | Next |
+| 10–18 | Remaining steps | Not started |
 
 ## Known bugs / gaps
 - Passkeys (WebAuthn) and OAuth are not implemented yet (schema tables exist).
@@ -62,7 +63,7 @@ Living tracker for the build plan in the master spec (Part 20). Updated after ea
   used by both the server (exports) and the web renderers.
 
 ## Test status (last full run)
-- Server 312 (unit + integration + security), shared 142, llm 71, ui 16, web 48 (coverage gate ≥80% lines).
-- E2E (Playwright + axe): 49 passed (incl. web search citations, ask-user, inline charts, Deep Research, image generation, Python/JS browser runner), including artifacts (sandbox isolation, bridge storage, Monaco editing,
+- Server 317 (unit + integration + security), shared 142, llm 71, ui 16, web 51 (coverage gate ≥80% lines).
+- E2E (Playwright + axe): 50 passed (incl. web search citations, ask-user, inline charts, Deep Research, image generation, Python/JS browser runner, suggested edits with per-change review), including artifacts (sandbox isolation, bridge storage, Monaco editing,
   diff/restore, "Fix with AI", charts, spreadsheet, gallery, publish/embed/unpublish) and memory (AI writes,
   "Memory used", settings edit/pin/undo, import review, tidy-up summary, pause, forget everything, per-chat opt-out).

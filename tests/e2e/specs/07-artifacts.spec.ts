@@ -172,3 +172,33 @@ test('publishing needs a verified email; published artifacts are public and remi
   const res = await page.request.get(`/api/public/artifacts/${slug}`);
   expect(res.status()).toBe(404);
 });
+
+test('suggested edits are reviewed change by change; quick actions become suggestions', async () => {
+  const items = await page.evaluate(() => fetch('/api/artifacts?q=Trip').then((r) => r.json() as Promise<{ items: { id: string }[] }>));
+  const id = items.items[0]!.id;
+  await page.goto('/');
+  await createArtifactCall(`[tool:suggest_artifact_edit {"id":"${id}","old_str":"Day one: museums.","new_str":"Day one: museums and parks.","note":"more detail"}]`);
+  await expect(page.getByRole('button', { name: 'Suggested changes to artifact: Trip plan. Open' })).toBeVisible();
+  await expect(panel()).toBeVisible();
+  await panel().getByRole('tab', { name: 'Suggestions (1)' }).click();
+  await expect(panel().getByLabel('Changes')).toContainText('Day one: museums and parks.');
+  await panel().getByRole('button', { name: 'Accept change 1' }).click();
+  await panel().getByRole('button', { name: 'Apply decisions' }).click();
+  await expect(page.getByText('Applied 1 change').first()).toBeVisible();
+  await panel().getByRole('tab', { name: 'Preview' }).click();
+  await expect(panel()).toContainText('Day one: museums and parks.');
+
+  await panel().getByRole('button', { name: 'Quick actions' }).click();
+  await page.getByRole('menuitem', { name: 'Shorten' }).click();
+  await expect(page.getByText('Suggestion ready to review').first()).toBeVisible();
+  await panel().getByRole('button', { name: 'Reject all' }).click();
+  await panel().getByRole('button', { name: 'Apply decisions' }).click();
+  await expect(page.getByText('Suggestion rejected').first()).toBeVisible();
+  await expect(panel().getByRole('tab', { name: /Suggestions/ })).toBeHidden();
+});
+
+async function createArtifactCall(text: string) {
+  await composer().fill(text);
+  await composer().press('Enter');
+  await page.waitForURL(/\/c\//);
+}
