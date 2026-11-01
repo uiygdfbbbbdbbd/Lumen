@@ -40,6 +40,8 @@ import { FileContextBuilder } from './services/files/context.js';
 import { FileService } from './services/files/file.service.js';
 import { ProjectService } from './services/projects/project.service.js';
 import { registerExporters } from './services/users/exporters.js';
+import { ArtifactService } from './services/artifacts/artifact.service.js';
+import { artifactTools } from './services/tools/artifact-tools.js';
 import type { SsrfOptions } from './lib/ssrf.js';
 
 export interface ApiKeyAuthenticator {
@@ -102,6 +104,7 @@ export interface Container {
   fileContext: FileContextBuilder;
   files: FileService;
   projects: ProjectService;
+  artifacts: ArtifactService;
   apiKeyAuth: ApiKeyAuthenticator | null;
   now: () => Date;
   close(): Promise<void>;
@@ -183,7 +186,9 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   const projects = new ProjectService(db, storage, audit, now);
   const filesSvc = new FileService(db, storage, settings, jobs, embeddings, scanner, () => projects, log, now, o.urlFetch);
   registerExporters(users, db, storage);
+  const artifactsSvc = new ArtifactService(db, projects, audit, catalog, providers, entitlements, now);
   const tools = new ToolRegistry().register(calculatorTool).register(datetimeTool).register(fileSearchTool(retrieval));
+  for (const t of artifactTools(artifactsSvc)) tools.register(t);
   const conversationsSvc = new ConversationService(db, bus, now);
   const runner = new GenerationRunner({ db, hub, bus, providers, catalog, entitlements, tools, rateLimiter, log, now });
   const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now, files: filesSvc, fileContext, projects });
@@ -226,6 +231,7 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     fileContext,
     files: filesSvc,
     projects,
+    artifacts: artifactsSvc,
     apiKeyAuth: null,
     now,
     async close() {

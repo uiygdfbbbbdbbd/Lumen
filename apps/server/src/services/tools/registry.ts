@@ -1,4 +1,5 @@
 import type { ToolDefinition } from '@lumen/llm';
+import type { ChatStreamEvent } from '@lumen/shared';
 import type { UserRow } from '../../db/schema/index.js';
 
 export interface ToolContext {
@@ -7,6 +8,10 @@ export interface ToolContext {
   signal: AbortSignal;
   /** Files/project the model may search with file_search in this turn. */
   fileScope?: { fileIds: string[]; projectId: string | null };
+  /** Assistant message being generated (provenance for artifacts). */
+  messageId?: string | null;
+  /** Push an event to the live stream (e.g. artifact created). */
+  emit?: (e: ChatStreamEvent) => Promise<void>;
 }
 
 export interface Tool {

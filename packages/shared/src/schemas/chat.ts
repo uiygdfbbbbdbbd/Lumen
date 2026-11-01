@@ -101,6 +101,7 @@ export type ChatStreamEvent =
   | { type: 'tool_result'; id: string; name: string; content: string; isError: boolean }
   | { type: 'fallback'; from: string; to: string; reason: string }
   | { type: 'compacted'; tokensBefore: number; tokensAfter: number }
+  | { type: 'artifact'; id: string; version: number; title: string; artifactType: string; action: 'created' | 'updated' }
   | { type: 'citations'; items: { n: number; chunkId: string; fileId: string; fileName: string; location: { page?: number; section?: string }; snippet: string }[] }
   | { type: 'usage'; inputTokens: number; outputTokens: number; contextTokens: number; contextWindow: number }
   | { type: 'done'; status: 'complete' | 'cancelled'; finishReason: string }

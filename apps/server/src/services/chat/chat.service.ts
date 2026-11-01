@@ -18,8 +18,9 @@ import type { ProjectService } from '../projects/project.service.js';
 import { pathTo, serializeMessage, type ConversationService } from './conversation.service.js';
 import type { GenerationRunner } from './generation.js';
 import { buildSystemPrompt, builtinStyle } from './prompt.js';
+import { ARTIFACT_GUIDANCE } from '../tools/artifact-tools.js';
 
-export const DEFAULT_TOOLS = ['calculator', 'current_datetime'];
+export const DEFAULT_TOOLS = ['calculator', 'current_datetime', 'create_artifact', 'update_artifact', 'rewrite_artifact'];
 
 export interface ChatDeps {
   db: Database;
@@ -97,7 +98,7 @@ export class ChatService {
       userInstructions: prefs.customInstructions,
       conversationInstructions: conv.instructions,
       styleInstructions: styleText,
-      extraSections: [...(project?.instructions.trim() ? [{ title: `Project "${project.name}" instructions`, body: project.instructions.trim() }] : []), ...extra],
+      extraSections: [...(model.model.capabilities.tools ? [{ title: 'Tools', body: ARTIFACT_GUIDANCE }] : []), ...(project?.instructions.trim() ? [{ title: `Project "${project.name}" instructions`, body: project.instructions.trim() }] : []), ...extra],
     });
   }
 

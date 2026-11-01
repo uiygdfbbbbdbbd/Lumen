@@ -273,7 +273,7 @@ export class GenerationRunner {
             for (const call of calls) {
               parts.push({ type: 'tool_call', round, id: call.id, name: call.name, arguments: call.arguments });
               await publish({ type: 'tool_call', id: call.id, name: call.name, arguments: call.arguments });
-              const r = await this.d.tools.execute(call.name, call.arguments, { user: job.user, conversationId: job.conversationId, signal: controller.signal, fileScope: job.files?.scope ?? undefined });
+              const r = await this.d.tools.execute(call.name, call.arguments, { user: job.user, conversationId: job.conversationId, signal: controller.signal, fileScope: job.files?.scope ?? undefined, messageId: job.assistant.id, emit: publish });
               parts.push({ type: 'tool_result', round, id: call.id, name: call.name, content: r.content, isError: r.isError });
               await publish({ type: 'tool_result', id: call.id, name: call.name, content: r.content, isError: r.isError });
               convo.push({ role: 'tool', toolCallId: call.id, name: call.name, content: r.content, isError: r.isError });
