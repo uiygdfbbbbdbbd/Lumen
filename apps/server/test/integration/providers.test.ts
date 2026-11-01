@@ -245,6 +245,9 @@ describe('key routing, failover and spend caps', () => {
   it('the circuit breaker opens after repeated failures', async () => {
     const p = (await createProvider({ name: 'Flaky' })).json();
     const { LlmError } = await import('@lumen/llm');
+    // Rate limits never open the circuit; outages do.
+    for (let i = 0; i < 10; i++) await t.c.providers.reportFailure(p.id, null, new LlmError('rate_limit', 'slow', 429));
+    expect((await t.c.providers.runtime(p.id)).provider.id).toBe(p.id);
     for (let i = 0; i < 5; i++) await t.c.providers.reportFailure(p.id, null, new LlmError('server', 'boom', 500));
     await expect(t.c.providers.runtime(p.id)).rejects.toThrow(/temporarily unavailable/);
     t.clock.advance(31_000);

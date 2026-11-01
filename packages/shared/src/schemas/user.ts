@@ -60,5 +60,9 @@ export const userPreferencesSchema = z.object({
   autoTitle: z.boolean().optional(),
   showSuggestions: z.boolean().optional(),
   defaultStyle: z.string().max(64).optional(),
+  /** Global custom instructions applied to every chat. */
+  customInstructions: z.string().max(8000).optional(),
+  /** User-remapped keyboard shortcuts: action id -> key combo. */
+  shortcuts: z.record(z.string().max(64), z.string().max(64)).optional(),
 });
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

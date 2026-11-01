@@ -3,6 +3,7 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
+import websocket from '@fastify/websocket';
 import { randomUUID } from 'node:crypto';
 import { ZodError } from 'zod';
 import { LumenError, REQUEST_ID_HEADER, type ApiErrorBody } from '@lumen/shared';
@@ -49,6 +50,7 @@ export async function buildApp(
     exposedHeaders: ['x-request-id', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'retry-after'],
   });
   await app.register(multipart, { limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 10 } });
+  await app.register(websocket, { options: { maxPayload: 64 * 1024 } });
 
   app.addHook('onRequest', async (req, reply) => {
     reply.header(REQUEST_ID_HEADER, req.id);

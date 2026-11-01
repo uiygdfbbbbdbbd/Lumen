@@ -75,6 +75,8 @@ async function emit(res: ServerResponse, kind: string, model: string, p: Plan) {
   const tick = async () => {
     sent += 1;
     if (p.disconnectAfter !== null && sent > p.disconnectAfter) {
+      // Let already-written chunks reach the client, then drop the connection abruptly.
+      await sleep(50);
       res.socket?.destroy();
       return false;
     }

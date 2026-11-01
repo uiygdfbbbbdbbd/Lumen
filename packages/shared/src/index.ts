@@ -8,3 +8,4 @@ export * from './schemas/user.js';
 export * from './constants.js';
 export * from './theme/index.js';
 export * from './schemas/providers.js';
+export * from './schemas/chat.js';

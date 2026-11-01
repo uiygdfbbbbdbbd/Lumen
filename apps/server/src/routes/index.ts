@@ -5,6 +5,8 @@ import { meRoutes } from './me.routes.js';
 import { publicRoutes } from './public.routes.js';
 import { modelRoutes } from './models.routes.js';
 import { adminProviderRoutes } from './admin/providers.routes.js';
+import { chatRoutes } from './chat.routes.js';
+import { realtimeRoutes } from './realtime.routes.js';
 
 export async function registerRoutes(app: FastifyInstance, c: Container) {
   publicRoutes(app, c);
@@ -12,4 +14,6 @@ export async function registerRoutes(app: FastifyInstance, c: Container) {
   meRoutes(app, c);
   modelRoutes(app, c);
   adminProviderRoutes(app, c);
+  chatRoutes(app, c);
+  realtimeRoutes(app, c);
 }

@@ -1,4 +1,5 @@
 /** Incremental parsers for Server-Sent Events and newline-delimited JSON over fetch bodies. */
+import { LlmError } from './types.js';
 
 export interface SseMessage {
   event: string | null;
@@ -12,7 +13,14 @@ async function* chunks(body: ReadableStream<Uint8Array>, signal?: AbortSignal): 
   try {
     while (true) {
       if (signal?.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError');
-      const { done, value } = await reader.read();
+      let result: Awaited<ReturnType<typeof reader.read>>;
+      try {
+        result = await reader.read();
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        throw new LlmError('network', `Connection to the model provider was lost: ${(err as Error).message}`);
+      }
+      const { done, value } = result;
       if (done) break;
       yield decoder.decode(value, { stream: true });
     }

@@ -346,7 +346,9 @@ export class ProviderService {
 
   async reportFailure(providerId: string, keyId: string | null, err: unknown): Promise<void> {
     const e = err instanceof LlmError ? err : null;
-    if (!e || e.retryable) this.breaker.failure(providerId);
+    // Only outages open the circuit. Rate limits are handled per key (cooldown) and our own
+    // "unavailable" errors (e.g. circuit already open) must not feed back into the breaker.
+    if (e && ['overloaded', 'server', 'network', 'timeout'].includes(e.kind)) this.breaker.failure(providerId);
     if (!keyId || !e) return;
     const cooldownMs = e.kind === 'rate_limit' ? (e.retryAfterMs ?? 30_000) : e.kind === 'auth' || e.kind === 'quota' ? 5 * 60_000 : 0;
     await this.db

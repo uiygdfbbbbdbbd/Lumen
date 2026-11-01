@@ -22,6 +22,15 @@ import { FsStorage, S3Storage, type StorageDriver } from './services/storage/sto
 import { UserService } from './services/users/user.service.js';
 import { ProviderService } from './services/providers/provider.service.js';
 import { ModelCatalogService } from './services/models/catalog.service.js';
+import { MemoryStreamHub, RedisStreamHub, type StreamHub } from './lib/realtime/stream-hub.js';
+import { MemoryEventBus, RedisEventBus, type EventBus } from './lib/realtime/event-bus.js';
+import { MemoryConcurrencyLimiter, RedisConcurrencyLimiter, type ConcurrencyLimiter } from './lib/realtime/concurrency.js';
+import { ConversationService } from './services/chat/conversation.service.js';
+import { GenerationRunner } from './services/chat/generation.js';
+import { ChatService } from './services/chat/chat.service.js';
+import { StyleService } from './services/chat/styles.service.js';
+import { ToolRegistry } from './services/tools/registry.js';
+import { calculatorTool, datetimeTool } from './services/tools/calculator.js';
 
 export interface ApiKeyAuthenticator {
   authenticate(token: string, ip: string): Promise<AuthContext>;
@@ -38,6 +47,8 @@ export interface ContainerOverrides {
   breachChecker?: BreachChecker | null;
   logger?: Logger;
   now?: () => Date;
+  hub?: StreamHub;
+  bus?: EventBus;
 }
 
 export interface Container {
@@ -63,6 +74,14 @@ export interface Container {
   users: UserService;
   providers: ProviderService;
   catalog: ModelCatalogService;
+  hub: StreamHub;
+  bus: EventBus;
+  concurrency: ConcurrencyLimiter;
+  tools: ToolRegistry;
+  conversations: ConversationService;
+  runner: GenerationRunner;
+  chat: ChatService;
+  styles: StyleService;
   apiKeyAuth: ApiKeyAuthenticator | null;
   now: () => Date;
   close(): Promise<void>;
@@ -133,6 +152,14 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   const users = new UserService(db, storage, audit, settings, hasher, config.API_URL, now);
   const providers = new ProviderService(db, box, storage, audit, email, config, log, now);
   const catalog = new ModelCatalogService(db, audit, config.API_URL);
+  const hub = o.hub ?? (redis && config.REDIS_URL ? new RedisStreamHub(redis, () => new Redis(config.REDIS_URL!)) : new MemoryStreamHub());
+  const bus = o.bus ?? (redis && config.REDIS_URL ? new RedisEventBus(redis, new Redis(config.REDIS_URL)) : new MemoryEventBus());
+  const concurrency = redis ? new RedisConcurrencyLimiter(redis) : new MemoryConcurrencyLimiter();
+  const tools = new ToolRegistry().register(calculatorTool).register(datetimeTool);
+  const conversationsSvc = new ConversationService(db, bus, now);
+  const runner = new GenerationRunner({ db, hub, bus, providers, catalog, entitlements, tools, rateLimiter, log, now });
+  const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now });
+  const stylesSvc = new StyleService(db, catalog, providers);
 
   return {
     config,
@@ -157,9 +184,18 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     users,
     providers,
     catalog,
+    hub,
+    bus,
+    concurrency,
+    tools,
+    conversations: conversationsSvc,
+    runner,
+    chat,
+    styles: stylesSvc,
     apiKeyAuth: null,
     now,
     async close() {
+      await bus.close();
       await dbHandle.close();
       if (redis && o.redis === undefined) redis.disconnect();
     },
