@@ -13,7 +13,7 @@ export interface ConversationSummary {
 }
 
 export interface MessagePart {
-  type: 'reasoning' | 'tool_call' | 'tool_result' | 'text_segment' | 'citation' | 'attachment' | 'compaction' | 'memory';
+  type: 'reasoning' | 'tool_call' | 'tool_result' | 'text_segment' | 'citation' | 'attachment' | 'compaction' | 'memory' | 'research';
   [k: string]: unknown;
 }
 

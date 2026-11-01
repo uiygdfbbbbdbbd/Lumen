@@ -21,6 +21,7 @@ export interface LiveStream {
   citations: Citation[];
   artifacts: LiveArtifact[];
   memoryIds: string[];
+  research: Extract<ChatStreamEvent, { type: 'research' }> | null;
 }
 
 export interface LiveArtifact {
@@ -33,7 +34,7 @@ export interface LiveArtifact {
 
 export type Citation = CitationItem;
 
-const empty = (): LiveStream => ({ text: '', reasoning: '', tools: [], status: 'streaming', error: null, fallback: null, compacted: false, reconnecting: false, usage: null, citations: [], artifacts: [], memoryIds: [] });
+const empty = (): LiveStream => ({ text: '', reasoning: '', tools: [], status: 'streaming', error: null, fallback: null, compacted: false, reconnecting: false, usage: null, citations: [], artifacts: [], memoryIds: [], research: null });
 
 interface Store {
   streams: Record<string, LiveStream>;
@@ -56,6 +57,8 @@ export function reduce(s: LiveStream, e: ChatStreamEvent): LiveStream {
       return { ...s, fallback: `${e.from} was unavailable, switched to ${e.to}.` };
     case 'compacted':
       return { ...s, compacted: true };
+    case 'research':
+      return { ...s, research: { ...e, sources: e.sources ?? s.research?.sources }, reconnecting: false };
     case 'memory':
       return { ...s, memoryIds: e.ids };
     case 'artifact':

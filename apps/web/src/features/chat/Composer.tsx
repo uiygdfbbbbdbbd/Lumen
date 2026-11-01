@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { estimateTokens } from '@lumen/llm';
-import { Badge, IconButton, Popover, PopoverContent, PopoverTrigger, cn, toast } from '@lumen/ui';
-import { ArrowUp, Columns2, Loader2, Mic, MicOff, Paperclip, RotateCw, Square, X } from 'lucide-react';
+import { Badge, Button, cn, IconButton, Popover, PopoverContent, PopoverTrigger, toast } from '@lumen/ui';
+import { ArrowUp, Columns2, Loader2, Lock, Mic, MicOff, Paperclip, RotateCw, Square, Telescope, X } from 'lucide-react';
 import { FileIcon } from '../files/FileIcon.js';
 import { useAttachments } from '../files/useAttachments.js';
 import { formatBytes } from '../../lib/i18n.js';
@@ -25,13 +25,22 @@ interface Props {
   onModelChange: (id: string) => void;
   streaming: boolean;
   sendWithEnter: boolean;
-  onSend: (text: string, opts: { compareModelIds?: string[]; attachments?: string[] }) => Promise<void>;
+  onSend: (text: string, opts: { compareModelIds?: string[]; attachments?: string[]; research?: { depth: ResearchDepth } }) => Promise<void>;
+  /** Whether Deep Research is available to this user (and why not). */
+  research?: { allowed: boolean; reason?: string };
   projectId?: string | null;
   onStop: () => void;
   slashCommands: SlashCommand[];
   disabledReason?: string | null;
   placeholder?: string;
 }
+
+type ResearchDepth = 'quick' | 'standard' | 'deep';
+const DEPTHS: { id: ResearchDepth; label: string; hint: string }[] = [
+  { id: 'quick', label: 'Quick', hint: '~4 sources, about a minute' },
+  { id: 'standard', label: 'Standard', hint: '~8 sources, a few minutes' },
+  { id: 'deep', label: 'Deep', hint: '~14 sources, longer report' },
+];
 
 const HISTORY_KEY = 'lumen.promptHistory';
 const draftKey = (id: string | undefined) => `lumen.draft.${id ?? 'new'}`;
@@ -42,6 +51,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
   const [text, setText] = useState(() => localStorage.getItem(draftKey(p.conversationId)) ?? '');
   const [historyIdx, setHistoryIdx] = useState(-1);
   const [compare, setCompare] = useState<string[]>([]);
+  const [research, setResearch] = useState<ResearchDepth | null>(null);
   const [queued, setQueued] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const recognition = useRef<InstanceType<SpeechCtor> | null>(null);
@@ -123,6 +133,16 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
     setText('');
     localStorage.removeItem(draftKey(p.conversationId));
     const attachments = att.readyIds;
+    if (research) {
+      try {
+        await p.onSend(content, { research: { depth: research } });
+        setResearch(null);
+      } catch (e) {
+        setText(content);
+        throw e;
+      }
+      return;
+    }
     try {
       await p.onSend(content, {
         ...(compare.length >= 1 ? { compareModelIds: [...new Set([p.modelId, ...compare].filter((x): x is string => Boolean(x) && x !== 'auto'))] } : {}),
@@ -283,6 +303,30 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, r
                 </li>
               ))}
             </ul>
+          </PopoverContent>
+        </Popover>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className={cn('flex h-8 items-center gap-1 rounded-md px-2 text-xs text-fg-2 hover:bg-hover', research && 'bg-accent-soft text-accent')} aria-label={research ? `Deep research: ${research}` : 'Deep research'} aria-pressed={Boolean(research)}>
+              <Telescope size={14} aria-hidden="true" /> Research
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72" align="start">
+            <p className="text-sm font-medium text-fg">Deep research</p>
+            <p className="mb-2 text-xs text-fg-2">Searches the web from several angles, reads the best sources and writes a cited report. It keeps running if you close the page.</p>
+            {p.research && !p.research.allowed ? (
+              <p className="flex items-center gap-1.5 text-xs text-warning"><Lock size={12} aria-hidden="true" /> {p.research.reason === 'EMAIL_UNVERIFIED' ? 'Verify your email to use Deep Research.' : 'Deep Research isn’t available on your plan.'}</p>
+            ) : (
+              <div role="radiogroup" aria-label="Research depth" className="flex flex-col gap-1">
+                {DEPTHS.map((d) => (
+                  <label key={d.id} className="flex cursor-pointer items-start gap-2 rounded-sm px-1 py-1 text-sm hover:bg-hover">
+                    <input type="radio" name="research-depth" checked={research === d.id} onChange={() => setResearch(d.id)} className="mt-1" />
+                    <span>{d.label}<span className="block text-xs text-fg-2">{d.hint}</span></span>
+                  </label>
+                ))}
+                {research ? <Button size="sm" variant="ghost" onClick={() => setResearch(null)}>Turn off</Button> : null}
+              </div>
+            )}
           </PopoverContent>
         </Popover>
         <span className="ml-auto text-xs text-fg-3" aria-live="off">{text ? `~${tokens.toLocaleString()} tokens` : ''}</span>

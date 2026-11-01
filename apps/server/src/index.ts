@@ -28,6 +28,14 @@ async function main() {
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
   await app.listen({ host: config.HOST, port: config.PORT });
+  // Background work interrupted by a restart (e.g. Deep Research runs) is picked up again.
+  if (config.RUN_WORKERS) {
+    const resumed = await c.research.recover().catch((err: unknown) => {
+      c.log.error({ err }, 'research recovery failed');
+      return 0;
+    });
+    if (resumed) c.log.info({ resumed }, 'resumed research runs');
+  }
 }
 
 void main();

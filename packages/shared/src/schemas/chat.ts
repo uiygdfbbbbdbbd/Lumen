@@ -92,6 +92,18 @@ export const styleInputSchema = z.object({
 });
 export const styleFromSampleSchema = z.object({ name: z.string().trim().min(1).max(60), sample: z.string().trim().min(50).max(20_000) });
 
+export type ResearchStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
+export type ResearchStep = 'queued' | 'planning' | 'searching' | 'reading' | 'writing' | 'done';
+export const RESEARCH_DEPTHS = ['quick', 'standard', 'deep'] as const;
+export const startResearchSchema = z.object({
+  query: z.string().trim().min(3).max(4000),
+  depth: z.enum(RESEARCH_DEPTHS).default('standard'),
+  modelId: z.string().max(200).optional(),
+  parentId: z.string().uuid().nullable().optional(),
+  /** Extra domains to leave out (on top of the admin's list). */
+  blockedDomains: z.array(z.string().trim().toLowerCase().max(253)).max(50).default([]),
+});
+
 /** A numbered source the answer can cite as [n]: an excerpt of a file, or a web page. */
 export type FileCitation = { n: number; kind?: 'file'; chunkId: string; fileId: string; fileName: string; location: { page?: number; section?: string }; snippet: string };
 export type WebCitation = { n: number; kind: 'web'; url: string; title: string; snippet: string; siteName?: string };
@@ -108,6 +120,7 @@ export type ChatStreamEvent =
   | { type: 'compacted'; tokensBefore: number; tokensAfter: number }
   | { type: 'artifact'; id: string; version: number; title: string; artifactType: string; action: 'created' | 'updated' }
   | { type: 'memory'; ids: string[] }
+  | { type: 'research'; runId: string; status: ResearchStatus; step: ResearchStep; message: string; done: number; total: number; sources?: { n: number; url: string; title: string; siteName: string }[] }
   | { type: 'citations'; items: CitationItem[] }
   | { type: 'usage'; inputTokens: number; outputTokens: number; contextTokens: number; contextWindow: number }
   | { type: 'done'; status: 'complete' | 'cancelled'; finishReason: string }

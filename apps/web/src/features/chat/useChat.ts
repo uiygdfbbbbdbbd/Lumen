@@ -86,7 +86,7 @@ export function useChat(conversationId: string | undefined) {
   );
 
   const send = useCallback(
-    async (content: string, opts: { modelId?: string; compareModelIds?: string[]; incognito?: boolean; parentId?: string | null; attachments?: string[]; projectId?: string | null } = {}) => {
+    async (content: string, opts: { modelId?: string; compareModelIds?: string[]; incognito?: boolean; parentId?: string | null; attachments?: string[]; projectId?: string | null; research?: { depth: 'quick' | 'standard' | 'deep' } } = {}) => {
       let convId = conversationId;
       if (!navigator.onLine) {
         if (!convId) throw new LumenError('PROVIDER_UNAVAILABLE', 'You are offline.');
@@ -94,6 +94,14 @@ export function useChat(conversationId: string | undefined) {
         q.push({ conversationId: convId, content, modelId: opts.modelId });
         localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
         toast({ title: 'You’re offline', description: 'Your message will be sent when you reconnect.' });
+        return;
+      }
+      if (opts.research) {
+        const isNew = !convId;
+        if (!convId) convId = (await createConversation({ modelId: opts.modelId ?? null, incognito: opts.incognito ?? false, projectId: opts.projectId ?? null })).id;
+        const r = await api<SendResult>(`/api/conversations/${convId}/research`, { method: 'POST', body: { query: content, depth: opts.research.depth, ...(opts.modelId ? { modelId: opts.modelId } : {}) } });
+        if (isNew) await navigate({ to: '/c/$conversationId', params: { conversationId: convId } });
+        await afterSend(convId, r);
         return;
       }
       if (!convId) {

@@ -185,7 +185,7 @@ export function chatRoutes(app: FastifyInstance, c: Container) {
     params: uuidParams,
     handler: async ({ auth, params }) => {
       await ownedMessage(auth.user.id, params.id);
-      return { cancelled: c.runner.cancel(auth.user.id, params.id) };
+      return { cancelled: c.runner.cancel(auth.user.id, params.id) || (await c.research.cancel(auth.user, { messageId: params.id })) };
     },
   });
 

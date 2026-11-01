@@ -12,6 +12,7 @@ import { projectRoutes } from './projects.routes.js';
 import { adminSettingsRoutes } from './admin/settings.routes.js';
 import { artifactRoutes } from './artifacts.routes.js';
 import { memoryRoutes } from './memory.routes.js';
+import { researchRoutes } from './research.routes.js';
 
 export async function registerRoutes(app: FastifyInstance, c: Container) {
   publicRoutes(app, c);
@@ -26,4 +27,5 @@ export async function registerRoutes(app: FastifyInstance, c: Container) {
   adminSettingsRoutes(app, c);
   artifactRoutes(app, c);
   memoryRoutes(app, c);
+  researchRoutes(app, c);
 }

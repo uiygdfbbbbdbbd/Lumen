@@ -18,7 +18,7 @@ function renderWithProviders(ui: ReactNode) {
   );
 }
 
-const empty: LiveStream = { text: '', reasoning: '', tools: [], status: 'streaming', error: null, fallback: null, compacted: false, reconnecting: false, usage: null, citations: [], artifacts: [], memoryIds: [] };
+const empty: LiveStream = { text: '', reasoning: '', tools: [], status: 'streaming', error: null, fallback: null, compacted: false, reconnecting: false, usage: null, citations: [], artifacts: [], memoryIds: [], research: null };
 
 afterEach(() => vi.unstubAllGlobals());
 

@@ -45,6 +45,7 @@ import { artifactTools } from './services/tools/artifact-tools.js';
 import { conversationSearchTool, memoryTools } from './services/tools/memory-tools.js';
 import { MemoryService } from './services/memory/memory.service.js';
 import { WebService } from './services/web/web.service.js';
+import { ResearchService } from './services/research/research.service.js';
 import { webTools } from './services/tools/web-tools.js';
 import { utilityTools } from './services/tools/utility-tools.js';
 import { interactiveTools } from './services/tools/interactive-tools.js';
@@ -116,6 +117,7 @@ export interface Container {
   artifacts: ArtifactService;
   memory: MemoryService;
   web: WebService;
+  research: ResearchService;
   apiKeyAuth: ApiKeyAuthenticator | null;
   now: () => Date;
   close(): Promise<void>;
@@ -208,6 +210,7 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
   tools.register(conversationSearchTool(conversationsSvc));
   const runner = new GenerationRunner({ db, hub, bus, providers, catalog, entitlements, tools, rateLimiter, log, now });
   const chat = new ChatService({ db, conversations: conversationsSvc, catalog, providers, entitlements, settings, runner, concurrency, rateLimiter, bus, log, now, files: filesSvc, fileContext, projects, memory: memorySvc, web });
+  const research = new ResearchService({ db, conversations: conversationsSvc, catalog, providers, entitlements, web, artifacts: artifactsSvc, hub, bus, jobs, log, now });
   const stylesSvc = new StyleService(db, catalog, providers);
 
   return {
@@ -250,6 +253,7 @@ export function createContainer(config: Config, o: ContainerOverrides = {}): Con
     artifacts: artifactsSvc,
     memory: memorySvc,
     web,
+    research,
     apiKeyAuth: null,
     now,
     async close() {

@@ -5,7 +5,7 @@ import { Badge, Banner, Button, Dialog, DialogContent, DropdownMenu, DropdownMen
 import { Archive, Brain, Copy, EyeOff, Layers, MoreHorizontal, NotebookPen, Star, Trash2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, errorMessage } from '../../lib/api.js';
-import { useMe } from '../../lib/auth.js';
+import { featureState, useMe } from '../../lib/auth.js';
 import { greetingKey, t } from '../../lib/i18n.js';
 import { usePreferences } from '../models/useModels.js';
 import { startersFor } from '../shell/starters.js';
@@ -217,6 +217,7 @@ export function ChatPage({ incognitoDefault = false }: { incognitoDefault?: bool
             if (conv) patch.mutate({ id: conv.id, modelId: id === 'auto' ? null : id });
           }}
           streaming={streamingIds.length > 0}
+          research={featureState(me, 'deepResearch')}
           sendWithEnter={prefs?.sendWithEnter ?? true}
           slashCommands={slashCommands}
           onStop={() => streamingIds.forEach((id) => void chat.cancel(id))}

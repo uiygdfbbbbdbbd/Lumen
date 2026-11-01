@@ -10,6 +10,7 @@ import { ToolCard } from './ToolCard.js';
 import { ArtifactCard, ARTIFACT_TOOLS } from '../artifacts/ArtifactCard.js';
 import { MEMORY_TOOL_NAMES, MemoryToolCard, MemoryUsed } from '../memory/MemoryUsed.js';
 import { AskUserCard, InlineChart, InlineDiagram, WebToolRow } from './ToolViews.js';
+import { ResearchCard } from '../research/ResearchCard.js';
 import type { LiveStream } from './store.js';
 import type { ChatMessage } from './types.js';
 
@@ -74,6 +75,7 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
   const error = live?.error ?? (m.status === 'error' ? m.error : null);
   const citations = (live && m.status === 'streaming' ? live.citations : (m.parts.filter((p) => p.type === 'citation') as unknown as Citation[])) ?? [];
   const memoryIds = (live && m.status === 'streaming' ? live.memoryIds : ((m.parts.find((p) => p.type === 'memory') as { ids?: string[] } | undefined)?.ids ?? [])) ?? [];
+  const researchRunId = (m.parts.find((p) => p.type === 'research') as { runId?: string } | undefined)?.runId;
   const attachments = m.parts.filter((p) => p.type === 'attachment') as unknown as { fileId: string; name: string; kind: string }[];
 
   if (m.role === 'user') {
@@ -128,6 +130,7 @@ export const MessageItem = memo(function MessageItem({ message: m, live, sibling
     <article aria-label={`Response${m.modelName ? ` from ${m.modelName}` : ''}`} aria-busy={streaming} className="group py-3" data-message-id={m.id}>
       {live?.fallback ? <p className="mb-2 text-xs text-warning">{live.fallback}</p> : null}
       {live?.compacted ? <p className="mb-2 text-xs text-fg-2">Earlier messages were summarized to fit the model’s context window.</p> : null}
+      {researchRunId ? <ResearchCard runId={researchRunId} live={live?.research ?? null} onStop={streaming ? () => void a.onCancel(m.id) : undefined} /> : null}
       {reasoning ? <Reasoning text={reasoning} streaming={streaming && !text} /> : null}
       {tools.map((t) =>
         ARTIFACT_TOOLS.has(t.name) ? (
