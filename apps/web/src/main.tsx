@@ -5,6 +5,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { LumenError } from '@lumen/shared';
 import { createAppRouter } from './router.js';
 import { startThemeEngine } from './lib/theme.js';
+import { registerServiceWorker } from './lib/pwa.js';
 import './styles.css';
 
 const queryClient = new QueryClient({
@@ -17,6 +18,7 @@ const queryClient = new QueryClient({
 });
 const router = createAppRouter(queryClient);
 startThemeEngine();
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

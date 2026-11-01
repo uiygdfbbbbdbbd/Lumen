@@ -1,17 +1,35 @@
 #!/usr/bin/env node
-// Fails if the web app's initial JS (gzip) exceeds the budget. Keeps first paint fast on mid-range devices.
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+// Budget for the JS the browser must download before first paint: the entry script plus every
+// modulepreload in index.html. Lazy route chunks (chat, mermaid, katex...) are reported separately.
+import { readdirSync, readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 
-const BUDGET_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 300);
-const dir = 'apps/web/dist/assets';
-const js = readdirSync(dir).filter((f) => f.endsWith('.js'));
-let total = 0;
-for (const f of js) {
-  const size = gzipSync(readFileSync(path.join(dir, f))).length;
-  total += size;
-  console.warn(`${f.padEnd(40)} ${(size / 1024).toFixed(1)} KB gz (${(statSync(path.join(dir, f)).size / 1024).toFixed(0)} KB raw)`);
+const INITIAL_BUDGET_KB = Number(process.env.BUNDLE_BUDGET_KB ?? 300);
+const LAZY_CHUNK_BUDGET_KB = Number(process.env.LAZY_CHUNK_BUDGET_KB ?? 260);
+const dist = 'apps/web/dist';
+const html = readFileSync(path.join(dist, 'index.html'), 'utf8');
+const initial = new Set([...html.matchAll(/(?:src|href)="\/(assets\/[^"]+\.js)"/g)].map((m) => m[1]));
+const gz = (f) => gzipSync(readFileSync(path.join(dist, f))).length / 1024;
+
+let initialTotal = 0;
+for (const f of initial) {
+  const kb = gz(f);
+  initialTotal += kb;
+  console.warn(`initial  ${f.padEnd(48)} ${kb.toFixed(1)} KB gz`);
 }
-console.warn(`Total JS: ${(total / 1024).toFixed(1)} KB gz (budget ${BUDGET_KB} KB)`);
-if (total / 1024 > BUDGET_KB) process.exit(1);
+// Route chunks are named after their component (PascalCase). Other lazy chunks (mermaid diagram types,
+// the ELK layout engine...) load only when a feature needs them and are reported, not budgeted.
+let worstLazy = { f: '', kb: 0 };
+let onDemand = 0;
+for (const f of readdirSync(path.join(dist, 'assets')).filter((x) => x.endsWith('.js')).map((x) => `assets/${x}`)) {
+  if (initial.has(f)) continue;
+  const kb = gz(f);
+  if (/^assets\/[A-Z]/.test(f)) {
+    if (kb > worstLazy.kb) worstLazy = { f, kb };
+  } else onDemand += kb;
+}
+console.warn(`On-demand feature chunks (not budgeted): ${onDemand.toFixed(0)} KB gz total`);
+console.warn(`Initial JS: ${initialTotal.toFixed(1)} KB gz (budget ${INITIAL_BUDGET_KB} KB)`);
+console.warn(`Largest route chunk: ${worstLazy.f} ${worstLazy.kb.toFixed(1)} KB gz (budget ${LAZY_CHUNK_BUDGET_KB} KB)`);
+if (initialTotal > INITIAL_BUDGET_KB || worstLazy.kb > LAZY_CHUNK_BUDGET_KB) process.exit(1);

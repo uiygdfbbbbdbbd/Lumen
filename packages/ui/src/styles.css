@@ -72,3 +72,27 @@
 .lm-skeleton { background: linear-gradient(90deg, var(--lm-surface), var(--lm-hover), var(--lm-surface)); background-size: 200% 100%; animation: lm-shimmer 1.4s infinite linear; }
 @keyframes lm-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @keyframes lm-spin { to { transform: rotate(360deg); } }
+
+/* Chat prose: readable defaults for rendered Markdown, all driven by theme tokens. */
+.lm-prose { overflow-wrap: anywhere; }
+.lm-prose > :first-child { margin-top: 0; }
+.lm-prose > :last-child { margin-bottom: 0; }
+.lm-prose p { margin: 0.6em 0; }
+.lm-prose h1, .lm-prose h2, .lm-prose h3, .lm-prose h4 { font-weight: var(--lm-font-weight-bold, 600); margin: 1.1em 0 0.5em; line-height: 1.3; }
+.lm-prose h1 { font-size: 1.5em; } .lm-prose h2 { font-size: 1.3em; } .lm-prose h3 { font-size: 1.15em; }
+.lm-prose ul, .lm-prose ol { margin: 0.6em 0; padding-left: 1.5em; }
+.lm-prose ul { list-style: disc; } .lm-prose ol { list-style: decimal; }
+.lm-prose li { margin: 0.2em 0; }
+.lm-prose li > input[type='checkbox'] { margin-right: 0.4em; }
+.lm-prose blockquote { border-left: 3px solid var(--lm-border); padding-left: 0.9em; color: var(--lm-text-2); margin: 0.8em 0; }
+.lm-prose hr { border: 0; border-top: 1px solid var(--lm-border); margin: 1.2em 0; }
+.lm-prose .footnotes { font-size: 0.85em; color: var(--lm-text-2); }
+.lm-prose .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.3em 0; }
+
+/* Syntax highlighting (highlight.js classes) mapped onto theme tokens. */
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type { color: var(--lm-accent); }
+.hljs-string, .hljs-attr, .hljs-template-tag, .hljs-addition { color: var(--lm-success); }
+.hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet { color: var(--lm-warning); }
+.hljs-comment, .hljs-quote, .hljs-meta { color: var(--lm-text-3); font-style: italic; }
+.hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--lm-info); }
+.hljs-deletion, .hljs-variable, .hljs-regexp { color: var(--lm-danger); }

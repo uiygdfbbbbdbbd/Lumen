@@ -36,7 +36,7 @@ test('full onboarding with avatar, unverified locks, then email verification unl
   await expect(page.getByRole('heading', { name: 'You’re ready' })).toBeVisible();
   await page.getByRole('button', { name: 'Start the tour' }).click();
 
-  await expect(page.getByRole('dialog', { name: 'Your home' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Start a chat' })).toBeVisible();
   await page.getByRole('button', { name: 'Skip tour' }).click();
   await expect(page.getByRole('heading', { name: /Ada/ })).toBeVisible();
   await expect(page.getByText('Explain this error')).toBeVisible(); // coding starter

@@ -1,4 +1,4 @@
-import { createRootRouteWithContext, createRoute, createRouter, Link, Outlet, redirect } from '@tanstack/react-router';
+import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link, Outlet, redirect } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import { Button, Toaster, TooltipProvider } from '@lumen/ui';
 import { meQueryOptions } from './lib/auth.js';
@@ -8,7 +8,6 @@ import { SignupPage } from './features/auth/SignupPage.js';
 import { ConfirmEmailChangePage, ForgotPasswordPage, MagicLinkPage, ResetPasswordPage, VerifyEmailPage } from './features/auth/TokenPages.js';
 import { OnboardingPage } from './features/onboarding/OnboardingPage.js';
 import { AppShell } from './features/shell/AppShell.js';
-import { HomePage } from './features/shell/HomePage.js';
 import { SettingsLayout } from './features/settings/SettingsLayout.js';
 import { ProfileSettings } from './features/settings/ProfileSettings.js';
 import { SecuritySettings } from './features/settings/SecuritySettings.js';
@@ -17,6 +16,7 @@ import { UsageSettings } from './features/settings/UsageSettings.js';
 import { PrivacySettings } from './features/settings/PrivacySettings.js';
 import { DesignSystemPage } from './features/design-system/DesignSystemPage.js';
 import { ChatSettings } from './features/settings/ChatSettings.js';
+import { ShortcutSettings } from './features/settings/ShortcutSettings.js';
 import { AdminLayout } from './features/admin/AdminLayout.js';
 import { ProvidersPage } from './features/admin/ProvidersPage.js';
 import { ModelsPage } from './features/admin/ModelsPage.js';
@@ -108,18 +108,24 @@ const shell = createRoute({
   },
   component: AppShell,
 });
+// The chat UI (markdown, math, highlighting) is code-split so sign-in and settings load fast.
+const ChatPageLazy = lazyRouteComponent(() => import('./features/chat/ChatPage.js'), 'ChatPage');
 const homeRoute = createRoute({
   getParentRoute: () => shell,
   path: '/',
   validateSearch: (s: Record<string, unknown>): { tour?: '1' } => (s.tour === '1' ? { tour: '1' } : {}),
-  component: HomePage,
+  component: ChatPageLazy,
 });
+const chatRoute = createRoute({ getParentRoute: () => shell, path: '/c/$conversationId', component: ChatPageLazy });
+const TemporaryChat = lazyRouteComponent(() => import('./features/chat/TemporaryChat.js'), 'TemporaryChat');
+const temporaryRoute = createRoute({ getParentRoute: () => shell, path: '/temporary', component: TemporaryChat });
 const settingsRoute = createRoute({ getParentRoute: () => shell, path: '/settings', component: SettingsLayout });
 const settingsIndex = createRoute({ getParentRoute: () => settingsRoute, path: '/', beforeLoad: () => { throw redirect({ to: '/settings/account' }); } });
 const accountRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/account', component: ProfileSettings });
 const securityRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/security', component: SecuritySettings });
 const appearanceRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/appearance', component: AppearanceSettings });
 const chatSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/chat', component: ChatSettings });
+const shortcutsRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/shortcuts', component: ShortcutSettings });
 const usageRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/usage', component: UsageSettings });
 const privacyRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/privacy', component: PrivacySettings });
 const designRoute = createRoute({ getParentRoute: () => shell, path: '/design-system', component: DesignSystemPage });
@@ -140,7 +146,7 @@ const routeTree = root.addChildren([
   guest.addChildren([loginRoute, signupRoute, forgotRoute, resetRoute, verifyRoute, magicRoute, emailChangeRoute]),
   authed.addChildren([
     onboardingRoute,
-    shell.addChildren([homeRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels])]),
+    shell.addChildren([homeRoute, chatRoute, temporaryRoute, settingsRoute.addChildren([settingsIndex, accountRoute, securityRoute, appearanceRoute, chatSettingsRoute, shortcutsRoute, usageRoute, privacyRoute]), designRoute, adminRoute.addChildren([adminIndex, adminProviders, adminModels])]),
   ]),
 ]);
 

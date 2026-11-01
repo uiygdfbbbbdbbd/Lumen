@@ -1,6 +1,25 @@
-import { Card, CardHeader, Field, Select, SwitchRow, toast } from '@lumen/ui';
+import { useEffect, useState } from 'react';
+import { Button, Card, CardHeader, Field, Select, SwitchRow, Textarea, toast } from '@lumen/ui';
+import { estimateTokens } from '@lumen/llm';
+import { StylesCard } from './StylesCard.js';
 import { ModelSelector } from '../models/ModelSelector.js';
 import { usePreferences, useUpdatePreferences } from '../models/useModels.js';
+
+function InstructionsCard() {
+  const { data: prefs } = usePreferences();
+  const update = useUpdatePreferences();
+  const [text, setText] = useState('');
+  useEffect(() => setText(prefs?.customInstructions ?? ''), [prefs?.customInstructions]);
+  return (
+    <Card>
+      <CardHeader title="Custom instructions" description="Applied to every new chat. Per-chat instructions (in a chat’s menu) take precedence." />
+      <Field label="What should the assistant know or do?" hint={`${text.length}/8000 characters · ~${estimateTokens(text)} tokens`}>
+        <Textarea value={text} maxLength={8000} onChange={(e) => setText(e.target.value)} className="min-h-32" placeholder="e.g. I’m a data engineer; prefer Python and SQL examples. Keep answers short." />
+      </Field>
+      <div className="mt-3 flex justify-end"><Button onClick={() => update.mutate({ customInstructions: text }, { onSuccess: () => toast.success('Instructions saved') })} loading={update.isPending}>Save instructions</Button></div>
+    </Card>
+  );
+}
 
 export function ChatSettings() {
   const { data: prefs } = usePreferences();
@@ -8,6 +27,8 @@ export function ChatSettings() {
   const save = (patch: Parameters<typeof update.mutate>[0]) => update.mutate(patch, { onSuccess: () => toast.success('Saved') });
   return (
     <>
+      <InstructionsCard />
+      <StylesCard />
       <Card>
         <CardHeader title="Default model" description="Used for new chats. You can switch per conversation." />
         <ModelSelector allowAuto value={prefs?.defaultModel ?? 'auto'} onChange={(id) => save({ defaultModel: id })} />

@@ -107,3 +107,28 @@ keyboard and screen-reader users press Alt+F on the active option (shown in the 
 ## D23. RATE_LIMIT_MULTIPLIER for test environments
 All rate limits scale by this env value (default 1). E2E and load tests raise it so a suite of sign-ups from one
 IP is not throttled, without weakening production defaults.
+
+## D24. Generations run server-side, decoupled from the HTTP request
+`POST /messages` creates placeholders and starts the generation in the background; clients follow
+`GET /api/streams/:id` (SSE). Every event gets a sequence number and is buffered in a stream hub (memory, or
+Redis Streams when `REDIS_URL` is set), so a client can drop, reconnect with `Last-Event-ID` and resume without
+losing or duplicating tokens. Closing the tab does not stop the answer. A heartbeat flush every 1.5 s plus
+`recoverStale()` marks generations orphaned by a crash as interrupted.
+
+## D25. Branching is a message tree
+Messages have `parentId`; edits and regenerations create siblings; `conversations.active_leaf_id` selects the
+visible branch. Compare mode creates 2-4 assistant siblings sharing a `compare_group`; "use this response"
+just moves the active leaf. This keeps every version reachable with no data duplication.
+
+## D26. Fallback only before the first token
+If the chosen model fails with a retryable error before streaming anything, the admin-configured fallback chain
+is tried. Once text has streamed, a failure ends the message with an error (keeping partial text) rather than
+splicing in a second model's answer.
+
+## D27. Compaction stores a summary instead of deleting history
+When a branch no longer fits the model's context, older turns are summarized by the same model and stored in
+`compactions`. The UI shows a marker; the original messages remain visible and searchable.
+
+## D28. Remote images in model output are not auto-loaded
+Rendered Markdown shows remote images as labeled links. Auto-loading them would let prompt-injected content
+exfiltrate data through image URLs. Raw HTML in model output is never rendered.

@@ -6,6 +6,7 @@ const SECTIONS = [
   { to: '/settings/security', label: 'Security' },
   { to: '/settings/appearance', label: 'Appearance' },
   { to: '/settings/chat', label: 'Chat' },
+  { to: '/settings/shortcuts', label: 'Shortcuts' },
   { to: '/settings/usage', label: 'Usage & limits' },
   { to: '/settings/privacy', label: 'Privacy & data' },
 ] as const;

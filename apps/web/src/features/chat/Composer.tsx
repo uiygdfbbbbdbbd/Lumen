@@ -1,0 +1,228 @@
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { estimateTokens } from '@lumen/llm';
+import { Badge, IconButton, Popover, PopoverContent, PopoverTrigger, cn, toast } from '@lumen/ui';
+import { ArrowUp, Columns2, Mic, MicOff, Square, X } from 'lucide-react';
+import { ModelSelector } from '../models/ModelSelector.js';
+import { useModels } from '../models/useModels.js';
+
+export interface ComposerHandle {
+  focus(): void;
+  insert(text: string): void;
+}
+
+interface SlashCommand {
+  name: string;
+  description: string;
+  run: () => void;
+}
+
+interface Props {
+  conversationId: string | undefined;
+  modelId: string | null;
+  onModelChange: (id: string) => void;
+  streaming: boolean;
+  sendWithEnter: boolean;
+  onSend: (text: string, opts: { compareModelIds?: string[] }) => Promise<void>;
+  onStop: () => void;
+  slashCommands: SlashCommand[];
+  disabledReason?: string | null;
+  placeholder?: string;
+}
+
+const HISTORY_KEY = 'lumen.promptHistory';
+const draftKey = (id: string | undefined) => `lumen.draft.${id ?? 'new'}`;
+
+type SpeechCtor = new () => { lang: string; interimResults: boolean; continuous: boolean; onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void; onend: () => void; start(): void; stop(): void };
+
+export const Composer = forwardRef<ComposerHandle, Props>(function Composer(p, ref) {
+  const [text, setText] = useState(() => localStorage.getItem(draftKey(p.conversationId)) ?? '');
+  const [historyIdx, setHistoryIdx] = useState(-1);
+  const [compare, setCompare] = useState<string[]>([]);
+  const [queued, setQueued] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const recognition = useRef<InstanceType<SpeechCtor> | null>(null);
+  const ta = useRef<HTMLTextAreaElement>(null);
+  const { data: models = [] } = useModels();
+
+  useImperativeHandle(ref, () => ({
+    focus: () => ta.current?.focus(),
+    insert: (t) => {
+      setText((cur) => (cur ? `${cur}\n\n${t}` : t));
+      setTimeout(() => ta.current?.focus(), 0);
+    },
+  }));
+
+  // Drafts are saved per conversation and restored when switching back.
+  useEffect(() => {
+    setText(localStorage.getItem(draftKey(p.conversationId)) ?? '');
+  }, [p.conversationId]);
+  useEffect(() => {
+    const t = setTimeout(() => (text ? localStorage.setItem(draftKey(p.conversationId), text) : localStorage.removeItem(draftKey(p.conversationId))), 300);
+    return () => clearTimeout(t);
+  }, [text, p.conversationId]);
+
+  // Autosize.
+  useEffect(() => {
+    const el = ta.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, window.innerHeight * 0.4)}px`;
+  }, [text]);
+
+  // Send a queued message once the current response finishes.
+  useEffect(() => {
+    if (!p.streaming && queued) {
+      const q = queued;
+      setQueued(null);
+      void p.onSend(q, {});
+    }
+  }, [p.streaming, queued, p]);
+
+  const slashMatches = useMemo(() => (text.startsWith('/') && !text.includes(' ') ? p.slashCommands.filter((c) => c.name.startsWith(text.slice(1).toLowerCase())) : []), [text, p.slashCommands]);
+  const tokens = useMemo(() => estimateTokens(text), [text]);
+
+  async function submit() {
+    const content = text.trim();
+    if (!content || p.disabledReason) return;
+    if (slashMatches.length === 1 && content === `/${slashMatches[0]!.name}`) {
+      slashMatches[0]!.run();
+      setText('');
+      return;
+    }
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as string[];
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([content, ...history.filter((h) => h !== content)].slice(0, 50)));
+    setHistoryIdx(-1);
+    if (p.streaming) {
+      setQueued(content);
+      setText('');
+      toast({ title: 'Queued', description: 'Your message will be sent when the current response finishes.' });
+      return;
+    }
+    setText('');
+    localStorage.removeItem(draftKey(p.conversationId));
+    try {
+      await p.onSend(content, compare.length >= 1 ? { compareModelIds: [...new Set([p.modelId, ...compare].filter((x): x is string => Boolean(x) && x !== 'auto'))] } : {});
+      setCompare([]);
+    } catch (e) {
+      setText(content);
+      throw e;
+    }
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    const sendCombo = p.sendWithEnter ? e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing : e.key === 'Enter' && (e.metaKey || e.ctrlKey);
+    if (sendCombo) {
+      e.preventDefault();
+      void submit().catch(() => undefined);
+      return;
+    }
+    if (e.key === 'ArrowUp' && (!text || historyIdx >= 0) && ta.current?.selectionStart === 0) {
+      const history = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as string[];
+      const next = Math.min(history.length - 1, historyIdx + 1);
+      if (next >= 0 && history[next]) {
+        e.preventDefault();
+        setHistoryIdx(next);
+        setText(history[next]!);
+      }
+    } else if (e.key === 'ArrowDown' && historyIdx >= 0) {
+      const history = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as string[];
+      e.preventDefault();
+      const next = historyIdx - 1;
+      setHistoryIdx(next);
+      setText(next >= 0 ? (history[next] ?? '') : '');
+    } else if (e.key === 'Escape' && p.streaming) p.onStop();
+  }
+
+  function toggleDictation() {
+    const Ctor = (window as unknown as { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor }).SpeechRecognition ?? (window as unknown as { webkitSpeechRecognition?: SpeechCtor }).webkitSpeechRecognition;
+    if (!Ctor) return toast.error('Voice dictation is not supported in this browser.');
+    if (listening) {
+      recognition.current?.stop();
+      return;
+    }
+    const r = new Ctor();
+    r.lang = document.documentElement.lang || 'en';
+    r.interimResults = false;
+    r.continuous = true;
+    const base = text;
+    let said = '';
+    r.onresult = (e) => {
+      said = Array.from(e.results).map((x) => x[0]!.transcript).join(' ');
+      setText(base ? `${base} ${said}` : said);
+    };
+    r.onend = () => setListening(false);
+    recognition.current = r;
+    r.start();
+    setListening(true);
+  }
+
+  return (
+    <div className="relative rounded-lg border border-border bg-elevated shadow-sm focus-within:border-accent">
+      {slashMatches.length ? (
+        <ul role="listbox" aria-label="Commands" className="absolute bottom-full left-0 mb-2 w-72 rounded-md border border-border bg-elevated p-1 shadow-md">
+          {slashMatches.map((c) => (
+            <li key={c.name} role="option" aria-selected={false} className="cursor-pointer rounded-sm px-2 py-1.5 text-sm hover:bg-hover" onMouseDown={(e) => { e.preventDefault(); c.run(); setText(''); }}>
+              <span className="font-medium">/{c.name}</span> <span className="text-fg-2">{c.description}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {compare.length ? (
+        <div className="flex flex-wrap items-center gap-1 border-b border-border px-3 py-1.5 text-xs text-fg-2">
+          Comparing with:
+          {compare.map((id) => (
+            <Badge key={id} tone="accent">
+              {models.find((m) => m.id === id)?.displayName ?? id}
+              <button type="button" aria-label="Remove from comparison" onClick={() => setCompare(compare.filter((c) => c !== id))}><X size={10} aria-hidden="true" /></button>
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+      {queued ? <div className="border-b border-border px-3 py-1.5 text-xs text-fg-2">Queued: “{queued.slice(0, 80)}”</div> : null}
+      <textarea
+        ref={ta}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setHistoryIdx(-1);
+        }}
+        onKeyDown={onKeyDown}
+        rows={1}
+        disabled={Boolean(p.disabledReason)}
+        placeholder={p.disabledReason ?? p.placeholder ?? 'Message Lumen…  (type / for commands)'}
+        aria-label="Message"
+        className="block max-h-[40vh] min-h-12 w-full resize-none bg-transparent px-4 pt-3 text-fg outline-none placeholder:text-fg-3 disabled:cursor-not-allowed"
+      />
+      <div className="flex items-center gap-1 px-2 pb-2">
+        <ModelSelector value={p.modelId} onChange={p.onModelChange} allowAuto className="h-8 border-0 bg-transparent" />
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className={cn('flex h-8 items-center gap-1 rounded-md px-2 text-xs text-fg-2 hover:bg-hover', compare.length && 'text-accent')} aria-label="Compare models">
+              <Columns2 size={14} aria-hidden="true" /> Compare
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64" align="start">
+            <p className="mb-2 text-xs text-fg-2">Send to up to 3 more models and see answers side by side.</p>
+            <ul className="flex max-h-60 flex-col gap-1 overflow-y-auto">
+              {models.filter((m) => m.available && m.id !== p.modelId).map((m) => (
+                <li key={m.id}>
+                  <label className="flex items-center gap-2 rounded-sm px-1 py-1 text-sm hover:bg-hover">
+                    <input type="checkbox" checked={compare.includes(m.id)} disabled={!compare.includes(m.id) && compare.length >= 3} onChange={(e) => setCompare(e.target.checked ? [...compare, m.id] : compare.filter((c) => c !== m.id))} />
+                    {m.displayName}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </PopoverContent>
+        </Popover>
+        <span className="ml-auto text-xs text-fg-3" aria-live="off">{text ? `~${tokens.toLocaleString()} tokens` : ''}</span>
+        <IconButton size="icon" label={listening ? 'Stop dictation' : 'Dictate'} aria-pressed={listening} icon={listening ? <MicOff size={18} /> : <Mic size={18} />} onClick={toggleDictation} />
+        {p.streaming && !text ? (
+          <IconButton size="icon" variant="secondary" label="Stop generating" icon={<Square size={16} />} onClick={p.onStop} />
+        ) : (
+          <IconButton size="icon" variant="primary" label={p.streaming ? 'Queue message' : 'Send message'} icon={<ArrowUp size={18} />} disabled={!text.trim() || Boolean(p.disabledReason)} onClick={() => void submit().catch(() => undefined)} />
+        )}
+      </div>
+    </div>
+  );
+});
