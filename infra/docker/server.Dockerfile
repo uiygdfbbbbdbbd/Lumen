@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:22-bookworm-slim AS base
+FROM node:26-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
 RUN corepack enable
 
@@ -11,7 +11,7 @@ RUN pnpm turbo run build --filter=@lumen/server...
 RUN pnpm deploy --filter=@lumen/server --prod --legacy /out \
  && cp -r apps/server/drizzle /out/drizzle
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 RUN groupadd -r lumen && useradd -r -g lumen -d /app lumen && mkdir -p /data && chown lumen:lumen /data
